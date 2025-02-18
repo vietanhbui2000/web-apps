@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#007bff">
     <title>2FA Code Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --primary-color: #007bff;
@@ -21,6 +22,15 @@
             --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             --border-radius: 8px;
             --transition: all 0.2s ease-in-out;
+            --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-duration: 0.3s;
+            --hover-transform: translateY(-2px);
+            --hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
         }
 
         * {
@@ -29,12 +39,19 @@
             padding: 0;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             padding: 20px;
             background-color: var(--bg-primary);
             color: var(--text-primary);
+            display: flex;
+            min-height: 100%;
         }
 
         .container {
@@ -44,6 +61,11 @@
             padding: 2rem;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
         }
 
         h1 {
@@ -71,7 +93,7 @@
             border: 2px solid var(--border-color);
             border-radius: var(--border-radius);
             font-size: 1rem;
-            transition: var(--transition);
+            transition: all var(--transition-duration) var(--transition-timing);
         }
 
         input:focus {
@@ -89,101 +111,275 @@
             cursor: pointer;
             font-size: 1rem;
             width: 100%;
-            transition: var(--transition);
             font-weight: 500;
+            transition: transform var(--transition-duration) var(--transition-timing),
+                        box-shadow var(--transition-duration) var(--transition-timing);
         }
 
         button:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
+            transform: var(--hover-transform);
+            box-shadow: var(--hover-shadow);
         }
 
         .codes-container {
-            margin-top: 2rem;
-            display: grid;
+            margin: 0 -2rem;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            mask-image: linear-gradient(
+                to bottom,
+                transparent,
+                black 1rem,
+                black calc(100% - 1rem),
+                transparent
+            );
+            -webkit-mask-image: linear-gradient(
+                to bottom,
+                transparent,
+                black 1rem,
+                black calc(100% - 1rem),
+                transparent
+            );
+        }
+
+        .codes-container::before,
+        .codes-container::after {
+            display: none;
+        }
+
+        .codes-container-inner {
+            padding: 1rem 0;
+            display: flex;
+            flex-direction: column;
             gap: 1rem;
         }
 
         .code-display {
-            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-lg);
             background-color: var(--bg-secondary);
             border-radius: var(--border-radius);
             position: relative;
-            transition: var(--transition);
             border: 1px solid var(--border-color);
+            gap: var(--spacing-lg);
+            overflow: hidden;
+            min-height: 90px;
+            flex-shrink: 0;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s var(--transition-timing),
+                        box-shadow 0.2s var(--transition-timing),
+                        background-color 0.2s var(--transition-timing);
         }
 
         .code-display:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .code-display:focus-within {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .account-name-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            max-width: 50%;
+        }
+
+        .account-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin: 0;
+            word-break: break-word;
+            line-height: 1.4;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity var(--transition-duration) var(--transition-timing);
+            flex-shrink: 0;
+        }
+
+        .account-name-container:hover .account-actions {
+            opacity: 1;
+        }
+
+        .account-action-btn {
+            position: relative;
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all var(--transition-duration) var(--transition-timing);
+        }
+
+        .account-action-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .account-action-btn .action-tooltip {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all var(--transition-duration) var(--transition-timing);
+            white-space: nowrap;
+        }
+
+        .account-action-btn:hover .action-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .account-action-btn.edit:hover {
+            color: var(--primary-color);
+        }
+
+        .account-action-btn.delete:hover {
+            color: var(--danger-color);
+        }
+
+        .account-actions-tooltip {
+            display: none;
+        }
+
+        .code-wrapper {
+            position: relative;
+            padding: 0.75rem 1.25rem;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            transition: all var(--transition-duration) var(--transition-timing);
+            flex-shrink: 0;
+            min-width: 160px;
+            text-align: center;
+            margin-left: auto;
+        }
+
+        .code-wrapper:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .code-wrapper.copied {
+            background: rgba(0, 123, 255, 0.08);
+            transition: background-color 0.2s ease;
         }
 
         .code {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
             color: var(--text-primary);
-            letter-spacing: 4px;
-            text-align: center;
-            margin: 1rem 0;
+            letter-spacing: 3px;
             font-weight: 600;
+            margin: 0;
+            user-select: none;
+            transition: all var(--transition-duration) var(--transition-timing);
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
         }
 
-        .timer {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            text-align: center;
-            margin: 0.5rem 0;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background-color: var(--border-color);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 0.75rem;
-        }
-
-        .progress {
-            height: 100%;
-            background-color: var(--primary-color);
-            transition: width 1s linear;
+        .code:hover {
+            color: var(--primary-color);
+            transform: scale(1.02);
         }
 
         .delete-btn {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            background-color: var(--danger-color);
-            color: white;
+            background-color: transparent;
+            color: var(--danger-color);
             border: none;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            font-size: 1.25rem;
+            width: 24px;
+            height: 24px;
+            font-size: 1rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.8;
+            opacity: 0;
             transition: var(--transition);
             padding: 0;
             line-height: 1;
+            flex-shrink: 0;
+            border-radius: 4px;
+        }
+
+        .account-name-container:hover .delete-btn {
+            opacity: 0.7;
         }
 
         .delete-btn:hover {
-            opacity: 1;
-            background-color: var(--danger-hover);
-            transform: scale(1.1);
+            opacity: 1 !important;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
+        .timer-wrapper {
+            display: none;
+        }
+
+        .timer-circle {
+            display: none;
+        }
+
+        .timer-text {
+            display: none;
+        }
+
+        .progress-bar {
+            display: none;
+        }
+
+        .code-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background-color: var(--primary-color);
+            opacity: 0.1;
+            transition: width 1s linear;
         }
 
         .footer {
             text-align: center;
-            margin-top: 2rem;
-            padding: 1.5rem;
+            padding: 1.5rem 2rem;
             color: var(--text-secondary);
             font-size: 0.875rem;
             border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            margin: 0 -2rem -2rem;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
         }
 
         .footer a {
@@ -197,18 +393,579 @@
             text-decoration: underline;
         }
 
+        /* Mobile styles */
         @media (max-width: 480px) {
             body {
-                padding: 1rem;
+                padding: 0.5rem;
+                height: 100%;
             }
 
             .container {
-                padding: 1.5rem;
+                padding: var(--spacing-md);
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .code-display {
+                gap: var(--spacing-sm);
+                padding: var(--spacing-md);
+            }
+
+            .account-name-container {
+                max-width: 45%;
+            }
+
+            .account-name {
+                font-size: 0.85rem;
+            }
+
+            .code-wrapper {
+                flex: 1;
+                min-width: 0;
+                padding: var(--spacing-sm) var(--spacing-md);
+                margin-right: var(--spacing-lg);
             }
 
             .code {
-                font-size: 2rem;
+                font-size: 1.5rem;
+                letter-spacing: 2px;
             }
+
+            /* Hide tooltips on mobile */
+            .action-tooltip,
+            .code-wrapper .tooltip {
+                display: none;
+            }
+
+            /* Always show action buttons on mobile */
+            .account-actions {
+                opacity: 0.7;
+            }
+
+            .timer-progress {
+                border-width: 1.5px;
+            }
+
+            /* Adjust dialog padding */
+            .dialog-base,
+            .add-account-form,
+            .edit-account-dialog {
+                padding: var(--spacing-lg);
+            }
+
+            /* Adjust button sizes */
+            .account-action-btn {
+                width: 32px;
+                height: 32px;
+            }
+
+            .code {
+                padding: 0.5rem;
+            }
+        }
+
+        .search-box {
+            margin: 0 0 1.5rem 0;
+            position: relative;
+        }
+
+        .search-box::after {
+            content: '🔍';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: all var(--transition-duration) var(--transition-timing);
+            background: var(--bg-secondary);
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+            background: white;
+        }
+
+        .add-account-section {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            margin: 0 -2rem;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            position: relative;
+            z-index: 5;
+        }
+
+        .add-account-form {
+            display: block;
+            position: absolute;
+            bottom: 100%;
+            left: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 1rem;
+            opacity: 0;
+            transform: translateY(10px);
+            z-index: 10;
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        visibility 0.3s;
+        }
+
+        .add-account-form.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            visibility: visible;
+        }
+
+        .add-account-form h2 {
+            margin: 0 0 1rem;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .add-account-form .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .add-account-form .input-group:last-of-type {
+            margin-bottom: 2rem;
+        }
+
+        .add-account-form input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            background: var(--bg-secondary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .add-account-form input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+            background: white;
+        }
+
+        .add-account-form button {
+            margin-bottom: 0.5rem;
+        }
+
+        .import-export {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .import-export button {
+            flex: 1;
+            background-color: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .import-export button:hover {
+            background-color: var(--bg-secondary);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .timer-circle {
+            width: 28px;
+            height: 28px;
+        }
+
+        .timer-circle .background {
+            stroke: var(--border-color);
+            stroke-width: 3;
+            transition: var(--transition);
+        }
+
+        .timer-circle .progress {
+            stroke: var(--primary-color);
+            stroke-width: 3;
+            transition: stroke-dasharray 1s linear, stroke var(--transition);
+        }
+
+        .timer-wrapper:hover .timer-circle .progress {
+            stroke: var(--primary-hover);
+        }
+
+        .timer-wrapper:hover .timer-circle .background {
+            stroke: var(--border-color);
+            opacity: 0.8;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--border-radius);
+            font-size: 0.75rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            z-index: 10;
+            line-height: 1;
+        }
+
+        .delete-btn:hover .tooltip,
+        .timer-wrapper:hover .tooltip {
+            opacity: 1;
+        }
+
+        .delete-btn .tooltip {
+            right: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .timer-wrapper .tooltip {
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .code-wrapper .tooltip {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--border-radius);
+            font-size: 0.75rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .code-wrapper:hover .tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-4px);
+        }
+
+        .copy-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--primary-color);
+            font-weight: 500;
+            font-size: 1rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--transition-duration) var(--transition-timing);
+        }
+
+        .code-wrapper.copied .code {
+            opacity: 0;
+        }
+
+        .code-wrapper.copied .copy-indicator {
+            opacity: 1;
+        }
+
+        /* Scrollbar styles */
+        @media screen and (min-width: 768px) {
+            .codes-container {
+                /* For Firefox */
+                scrollbar-width: thin;
+                scrollbar-color: transparent transparent;
+            }
+
+            .codes-container:hover {
+                scrollbar-color: var(--border-color) transparent;
+            }
+
+            /* For Webkit browsers */
+            .codes-container::-webkit-scrollbar {
+                width: 6px;
+                position: absolute;
+                right: 0;
+            }
+
+            .codes-container::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .codes-container::-webkit-scrollbar-thumb {
+                background-color: var(--border-color);
+                border-radius: 20px;
+                border: 2px solid transparent;
+                background-clip: content-box;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            .codes-container:hover::-webkit-scrollbar-thumb {
+                opacity: 0.5;
+            }
+
+            .codes-container:hover::-webkit-scrollbar-thumb:hover {
+                opacity: 1;
+                background-color: var(--text-secondary);
+            }
+        }
+
+        .section-divider {
+            margin: auto -2rem 0;
+            height: 1px;
+            background: var(--border-color);
+            border: none;
+        }
+
+        .toggle-btn {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toggle-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .toggle-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .button-loading {
+            position: relative;
+            color: transparent !important;
+            cursor: not-allowed;
+        }
+
+        .button-loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin: -8px 0 0 -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: button-loading-spinner 0.6s linear infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Timer progress line */
+        .timer-progress {
+            position: absolute;
+            pointer-events: none;
+            inset: 0;
+            border: 2px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            opacity: 0.15;
+            clip-path: inset(0 0 0 0);
+            transition: none;
+        }
+
+        .timer-progress.animate {
+            clip-path: inset(0 0 0 var(--progress));
+            transition: clip-path 1s linear;
+        }
+
+        /* Dialog base styles */
+        .dialog,
+        .edit-account-dialog,
+        .add-account-form {
+            position: absolute;
+            bottom: 100%;
+            left: 1rem;
+            right: 1rem;
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--border-radius);
+            box-shadow: var(--hover-shadow);
+            margin-bottom: var(--spacing-md);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity var(--transition-duration) var(--transition-timing),
+                        transform var(--transition-duration) var(--transition-timing),
+                        visibility var(--transition-duration);
+            z-index: 10;
+        }
+
+        .dialog-base.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            visibility: visible;
+        }
+
+        .dialog-content {
+            width: 100%;
+        }
+
+        .dialog h2,
+        .edit-account-dialog h2,
+        .add-account-form h2 {
+            margin: 0 0 1rem;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .dialog-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .dialog textarea {
+            width: 100%;
+            height: 150px;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            resize: none;
+            transition: all var(--transition-duration) var(--transition-timing);
+        }
+
+        .dialog textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        /* Dialog buttons */
+        .dialog-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .dialog-buttons button {
+            flex: 1;
+        }
+
+        .dialog-buttons .secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .dialog-buttons .secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-secondary);
+        }
+
+        .dialog-buttons button.copied {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all var(--transition-duration) var(--transition-timing);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .toast button {
+            background: none;
+            border: none;
+            color: white;
+            text-decoration: underline;
+            padding: 0;
+            font-size: inherit;
+            cursor: pointer;
+            width: auto;
+        }
+
+        .toast button:hover {
+            text-decoration: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .toast-success {
+            background: rgba(40, 167, 69, 0.9);
+        }
+
+        .toast-error {
+            background: rgba(220, 53, 69, 0.9);
+        }
+
+        .toast-info {
+            background: rgba(0, 123, 255, 0.9);
+        }
+
+        /* Add loading skeleton animation */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0.6; }
+        }
+
+        .code.loading {
+            background: var(--border-color);
+            color: transparent;
+            animation: pulse 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        /* Add highlight for search results */
+        mark {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: inherit;
+            padding: 0.1em 0;
+            border-radius: 2px;
         }
     </style>
 </head>
@@ -216,6 +973,24 @@
     <div class="container">
         <h1>2FA Code Generator</h1>
         
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search accounts..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="codes-container" id="codesContainer"></div>
+
+        <hr class="section-divider">
+
+        <div id="addAccountSection" class="add-account-section">
+            <button id="toggleAddAccount" class="toggle-btn">+ Add New Account</button>
+            
+            <div id="addAccountForm" class="add-account-form">
+                <h2>Add New Account</h2>
         <div class="input-group">
             <label for="accountName">Account Name</label>
             <input 
@@ -238,12 +1013,82 @@
             >
         </div>
 
+                <div class="dialog-buttons">
         <button onclick="addAccount()">Add Account</button>
+                    <button class="secondary" onclick="document.getElementById('toggleAddAccount').click()">Cancel</button>
+                </div>
+            </div>
 
-        <div class="codes-container" id="codesContainer"></div>
+            <div id="editAccountDialog" class="edit-account-dialog">
+                <h2>Edit Account</h2>
+                <div class="input-group">
+                    <label for="editAccountName">Account Name</label>
+                    <input 
+                        type="text" 
+                        id="editAccountName" 
+                        placeholder="e.g., Google, GitHub"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="editSecretKey">Secret Key</label>
+                    <input 
+                        type="text" 
+                        id="editSecretKey" 
+                        placeholder="Enter your secret key"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+
+                <div class="dialog-buttons">
+                    <button onclick="saveEditAccount()">Save Changes</button>
+                    <button class="secondary" onclick="hideEditDialog()">Cancel</button>
+                </div>
+            </div>
+
+            <div id="importDialog" class="dialog">
+                <div class="dialog-content">
+                    <h2>Import Accounts</h2>
+                    <p class="dialog-description">Paste your accounts below, one per line:<br>Format: account|secretkey</p>
+                    <textarea 
+                        id="importText" 
+                        placeholder="google|JBSWY3DPEHPK3PXP&#10;github|JBSWY3DPEHPK3PXP"
+                        spellcheck="false"
+                    ></textarea>
+                    <div class="dialog-buttons">
+                        <button onclick="importAccounts()">Import</button>
+                        <button class="secondary" onclick="hideImportDialog()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="exportDialog" class="dialog">
+                <div class="dialog-content">
+                    <h2>Export Accounts</h2>
+                    <p class="dialog-description">Copy your accounts below:</p>
+                    <textarea 
+                        id="exportText" 
+                        readonly 
+                        spellcheck="false"
+                    ></textarea>
+                    <div class="dialog-buttons">
+                        <button onclick="copyExportText()">Copy to Clipboard</button>
+                        <button class="secondary" onclick="hideExportDialog()">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="import-export">
+                <button onclick="showImportDialog()">Import Accounts</button>
+                <button onclick="showExportDialog()">Export Accounts</button>
+            </div>
+        </div>
     
         <div class="footer">
-            <p>Made with ❤️ by <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">@vietanhbui2000</a>.</p>
+            <p>Made with ❤️ by <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">@vietanhbui2000</a>. Built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://www.cursor.com" target="_blank" rel="noopener">Cursor</a>.</p>
             <p style="margin-top: 0.5rem; font-size: 0.75rem">All calculations are performed locally in your browser.</p>
         </div>
     </div>
@@ -255,6 +1100,17 @@
 
         // State management
         let accounts = [];
+        let editingIndex = -1;
+
+        // Simple tooltip texts
+        const tooltipTexts = {
+            edit: "Edit",
+            delete: "Delete",
+            copy: "Double click to copy"
+        };
+
+        // Add deleted accounts array for undo functionality
+        let deletedAccounts = [];
 
         // Base32 decode function
         function base32ToHex(base32) {
@@ -328,23 +1184,36 @@
         }
 
         // Account management
-        function addAccount() {
+        function validateSecretKey(secret) {
+            try {
+                const testCode = generateTOTP(secret);
+                return testCode !== '------';
+            } catch {
+                return false;
+            }
+        }
+
+        async function addAccount() {
+            const btn = document.querySelector('#addAccountForm button');
+            showLoadingState(btn, 'Adding...');
+            try {
             const nameInput = document.getElementById('accountName');
             const secretInput = document.getElementById('secretKey');
             const name = nameInput.value.trim();
             const secret = secretInput.value.trim();
             
             if (!name || !secret) {
-                alert('Please enter both account name and secret key');
+                    alert('Please fill in all fields');
                 return;
             }
 
-            // Validate secret key
-            try {
-                const testCode = generateTOTP(secret);
-                if (testCode === '------') throw new Error('Invalid secret key');
-            } catch (error) {
-                alert('Invalid secret key format. Please check and try again.');
+                if (!validateSecretKey(secret)) {
+                    alert('Invalid secret key format');
+                    return;
+                }
+
+                if (accounts.some(acc => acc.name === name)) {
+                    alert('An account with this name already exists');
                 return;
             }
 
@@ -357,32 +1226,86 @@
             nameInput.value = '';
             secretInput.value = '';
             nameInput.focus();
+            } finally {
+                hideLoadingState(btn, 'Add Account');
+            }
         }
 
         function deleteAccount(index) {
-            if (confirm('Are you sure you want to delete this account?')) {
-                accounts.splice(index, 1);
+            const deletedAccount = accounts[index];
+            deletedAccounts.push({ account: deletedAccount, index });
+            accounts.splice(index, 1);
+            saveAccounts();
+            updateAccountsDisplay();
+            
+            showToast(
+                `Account deleted. <button onclick="undoDelete()">Undo</button>`,
+                'info'
+            );
+        }
+
+        function undoDelete() {
+            const deleted = deletedAccounts.pop();
+            if (deleted) {
+                accounts.splice(deleted.index, 0, deleted.account);
                 saveAccounts();
                 updateAccountsDisplay();
-                updateAllCodes();
+                showToast('Account restored', 'success');
             }
         }
 
         // UI updates
         function updateAccountsDisplay() {
             const container = document.getElementById('codesContainer');
+            const addAccountForm = document.getElementById('addAccountForm');
+            const toggleBtn = document.getElementById('toggleAddAccount');
             
-            container.innerHTML = accounts.map((account, index) => `
+            if (accounts.length === 0) {
+                addAccountForm.classList.add('visible');
+            } else {
+                addAccountForm.classList.remove('visible');
+                toggleBtn.textContent = '+ Add New Account';
+                toggleBtn.classList.remove('active');
+            }
+            
+            container.innerHTML = `
+                <div class="codes-container-inner">
+                    ${accounts.map((account, index) => `
                 <div class="code-display">
-                    <button class="delete-btn" onclick="deleteAccount(${index})" title="Delete account">&times;</button>
-                    <div style="font-weight: 500; text-align: center;">${account.name}</div>
-                    <div class="code" id="code-${index}">------</div>
-                    <div class="timer" id="timer-${index}"></div>
-                    <div class="progress-bar">
-                        <div class="progress" id="progress-${index}"></div>
+                            <div class="timer-progress" id="timer-progress-${index}"></div>
+                            <div class="account-name-container">
+                                <div class="account-name">${account.name}</div>
+                                <div class="account-actions">
+                                    <button class="account-action-btn edit" onclick="showEditDialog(${index})">
+                                        <i class="fas fa-pencil-alt"></i>
+                                        <span class="action-tooltip">${tooltipTexts.edit}</span>
+                                    </button>
+                                    <button class="account-action-btn delete" onclick="showDeleteDialog(${index})">
+                                        <i class="fas fa-trash-alt"></i>
+                                        <span class="action-tooltip">${tooltipTexts.delete}</span>
+                                    </button>
                     </div>
                 </div>
-            `).join('');
+                            <div class="code-wrapper">
+                                <div class="code" id="code-${index}" ondblclick="copyCode(${index})">------</div>
+                                <div class="copy-indicator">Copied!</div>
+                                <span class="tooltip">${tooltipTexts.copy}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Initialize timers and animations
+            requestAnimationFrame(() => {
+                accounts.forEach((_, index) => {
+                    const progressElement = document.getElementById(`timer-progress-${index}`);
+                    if (progressElement) {
+                        progressElement.classList.add('animate');
+                    }
+                });
+                updateTimers();
+            });
         }
 
         function updateAllCodes() {
@@ -398,38 +1321,440 @@
         function updateTimers() {
             const currentTime = Math.floor(Date.now() / 1000);
             const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
-            const progress = (timeLeft / TOTP_INTERVAL) * 100;
+            const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
 
-            accounts.forEach((_, index) => {
-                const timerElement = document.getElementById(`timer-${index}`);
-                const progressElement = document.getElementById(`progress-${index}`);
-                
-                if (timerElement && progressElement) {
-                    timerElement.textContent = `Refreshing in ${timeLeft}s`;
-                    progressElement.style.width = `${progress}%`;
-                }
-            });
-
-            if (timeLeft === TOTP_INTERVAL) {
+            // Refresh codes 3 seconds before expiry
+            if (timeLeft <= 3) {
                 updateAllCodes();
+            }
+
+            requestAnimationFrame(() => {
+                accounts.forEach((_, index) => {
+                    const progressElement = document.getElementById(`timer-progress-${index}`);
+                    if (progressElement) {
+                        progressElement.style.setProperty('--progress', `${progress}%`);
+                    }
+                });
+            });
+        }
+
+        // Add helper function to close all dialogs
+        function closeAllDialogs() {
+            const addAccountForm = document.getElementById('addAccountForm');
+            const importDialog = document.getElementById('importDialog');
+            const exportDialog = document.getElementById('exportDialog');
+            const toggleBtn = document.getElementById('toggleAddAccount');
+
+            // Close add account form if open
+            if (addAccountForm.classList.contains('visible')) {
+                addAccountForm.style.opacity = '0';
+                addAccountForm.style.transform = 'translateY(10px)';
+                addAccountForm.style.pointerEvents = 'none';
+                addAccountForm.style.visibility = 'hidden';
+                toggleBtn.textContent = '+ Add New Account';
+                toggleBtn.classList.remove('active');
+                setTimeout(() => {
+                    addAccountForm.classList.remove('visible');
+                }, 300);
+            }
+
+            // Close import dialog if open
+            if (importDialog.classList.contains('visible')) {
+                hideImportDialog();
+            }
+
+            // Close export dialog if open
+            if (exportDialog.classList.contains('visible')) {
+                hideExportDialog();
+            }
+
+            // Close edit dialog if open
+            const editDialog = document.getElementById('editAccountDialog');
+            if (editDialog.classList.contains('visible')) {
+                hideEditDialog();
             }
         }
 
-        // Initialize
-        loadAccounts();
-        setInterval(updateTimers, 1000);
+        // Update dialog open functions
+        function showImportDialog() {
+            closeAllDialogs();
+            const dialog = document.getElementById('importDialog');
+            dialog.classList.add('visible');
+            dialog.style.visibility = 'visible';
+            requestAnimationFrame(() => {
+                dialog.style.opacity = '1';
+                dialog.style.transform = 'translateY(0)';
+                dialog.style.pointerEvents = 'auto';
+            });
+            document.getElementById('importText').focus();
+        }
 
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                const activeElement = document.activeElement;
-                if (activeElement.id === 'accountName') {
-                    document.getElementById('secretKey').focus();
-                } else if (activeElement.id === 'secretKey') {
-                    addAccount();
-                }
+        function showExportDialog() {
+            closeAllDialogs();
+            const dialog = document.getElementById('exportDialog');
+            const exportText = accounts.map(acc => `${acc.name}|${acc.secret}`).join('\n');
+            document.getElementById('exportText').value = exportText;
+            
+            dialog.classList.add('visible');
+            dialog.style.visibility = 'visible';
+            requestAnimationFrame(() => {
+                dialog.style.opacity = '1';
+                dialog.style.transform = 'translateY(0)';
+                dialog.style.pointerEvents = 'auto';
+            });
+            document.getElementById('exportText').select();
+        }
+
+        // Update add account button click handler
+        document.getElementById('toggleAddAccount').addEventListener('click', () => {
+            const form = document.getElementById('addAccountForm');
+            const btn = document.getElementById('toggleAddAccount');
+            
+            if (form.classList.contains('visible')) {
+                form.style.opacity = '0';
+                form.style.transform = 'translateY(10px)';
+                form.style.pointerEvents = 'none';
+                form.style.visibility = 'hidden';
+                btn.textContent = '+ Add New Account';
+                btn.classList.remove('active');
+                
+                setTimeout(() => {
+                    form.classList.remove('visible');
+                }, 300);
+                btn.focus();
+            } else {
+                closeAllDialogs();  // Close other dialogs first
+                form.classList.add('visible');
+                form.style.visibility = 'visible';
+                requestAnimationFrame(() => {
+                    form.style.opacity = '1';
+                    form.style.transform = 'translateY(0)';
+                    form.style.pointerEvents = 'auto';
+                });
+                btn.textContent = '× Close';
+                btn.classList.add('active');
+                document.getElementById('accountName').focus();
             }
         });
+
+        // Add new functions for import/export
+        async function copyExportText() {
+            const text = document.getElementById('exportText').value;
+            const btn = event.target;
+            try {
+                await navigator.clipboard.writeText(text);
+                btn.classList.add('copied');
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = 'Copy to Clipboard';
+                }, 1500);
+            } catch (err) {
+                alert('Failed to copy text to clipboard');
+            }
+        }
+
+        async function importAccounts() {
+            if (accounts.length > 0 && !confirm('This will add to your existing accounts. Continue?')) {
+                return;
+            }
+            const btn = document.querySelector('#importDialog button');
+            btn.disabled = true;
+            btn.classList.add('button-loading');
+            btn.textContent = 'Importing...';
+
+            try {
+                const text = document.getElementById('importText').value.trim();
+                if (!text) {
+                    alert('Please enter some accounts to import');
+                    return;
+                }
+
+                const lines = text.split('\n').filter(line => line.trim());
+                let imported = 0;
+                let errors = [];
+                
+                lines.forEach((line, index) => {
+                    const [name, secret] = line.split('|').map(s => s.trim());
+                    if (name && secret) {
+                        try {
+                            if (validateSecretKey(secret)) {
+                                if (accounts.some(acc => acc.name === name)) {
+                                    errors.push(`Line ${index + 1}: Account "${name}" already exists`);
+                                } else {
+                                    accounts.push({ name, secret });
+                                    imported++;
+                                }
+                            } else {
+                                errors.push(`Line ${index + 1}: Invalid secret key for "${name}"`);
+                            }
+                        } catch (error) {
+                            errors.push(`Line ${index + 1}: Error processing "${name}"`);
+                        }
+                    }
+                });
+                
+                if (imported > 0) {
+                    saveAccounts();
+                    updateAccountsDisplay();
+                    updateAllCodes();
+                    hideImportDialog();
+                    alert(`Successfully imported ${imported} account(s)`);
+                } else {
+                    alert('No valid accounts found in the text');
+                }
+
+                if (errors.length > 0) {
+                    alert(`Import completed with warnings:\n\n${errors.join('\n')}`);
+                }
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('button-loading');
+                btn.textContent = 'Import';
+            }
+        }
+
+        // Update copy function
+        async function copyCode(index) {
+            try {
+                const codeElement = document.getElementById(`code-${index}`);
+                const code = codeElement.textContent;
+                const wrapper = codeElement.parentElement;
+                const indicator = wrapper.querySelector('.copy-indicator');
+                
+                await navigator.clipboard.writeText(code);
+                
+                // Add copied class for visual feedback
+                wrapper.classList.add('copied');
+                
+                // Reset states after delay
+                setTimeout(() => {
+                    wrapper.classList.remove('copied');
+                }, 1000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy code to clipboard');
+            }
+        }
+
+        // Update filterAccounts function
+        function filterAccounts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const displays = document.querySelectorAll('.code-display');
+            
+            displays.forEach(display => {
+                const nameElement = display.querySelector('.account-name');
+                const accountName = nameElement.textContent.toLowerCase();
+                
+                if (!searchTerm || accountName.includes(searchTerm)) {
+                    display.style.display = 'flex';
+                    display.style.opacity = '1';
+                    
+                    // Highlight matching text
+                    if (searchTerm) {
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        nameElement.innerHTML = nameElement.textContent.replace(
+                            regex,
+                            '<mark>$1</mark>'
+                        );
+                    } else {
+                        nameElement.innerHTML = nameElement.textContent;
+                    }
+                } else {
+                    display.style.display = 'none';
+                    display.style.opacity = '0';
+                }
+            });
+
+            // Update container state if no results
+            const container = document.getElementById('codesContainer');
+            const hasVisibleDisplays = Array.from(displays).some(d => d.style.display !== 'none');
+            
+            if (!hasVisibleDisplays) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                        No accounts found matching "${searchTerm}"
+                    </div>
+                `;
+            }
+        }
+
+        // Update debounce implementation
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(this, args);
+                }, wait);
+            };
+        }
+
+        // Initialize search with debounce
+        const debouncedFilter = debounce(filterAccounts, 300);
+        const searchInput = document.getElementById('searchInput');
+        
+        // Remove old listener and add new one
+        searchInput.removeEventListener('input', filterAccounts);
+        searchInput.addEventListener('input', debouncedFilter);
+
+        // Add clear search functionality
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                filterAccounts();
+                searchInput.blur();
+            }
+        });
+
+        // Update initialization section
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('keydown', (e) => {
+                // Only keep Escape key handling for dialogs
+                if (e.key === 'Escape') {
+                    const form = document.getElementById('addAccountForm');
+                    const importDialog = document.getElementById('importDialog');
+                    const exportDialog = document.getElementById('exportDialog');
+                    
+                    if (form.classList.contains('visible')) {
+                        document.getElementById('toggleAddAccount').click();
+                    }
+                    if (importDialog.classList.contains('visible')) {
+                        hideImportDialog();
+                    }
+                    if (exportDialog.classList.contains('visible')) {
+                        hideExportDialog();
+                    }
+                }
+            });
+
+            // Initialize app
+            loadAccounts();
+            setInterval(updateTimers, 1000);
+        });
+
+        // Add back the hide dialog functions
+        function hideImportDialog() {
+            const dialog = document.getElementById('importDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
+            setTimeout(() => {
+                dialog.classList.remove('visible');
+                document.getElementById('importText').value = '';
+            }, 300);
+        }
+
+        function hideExportDialog() {
+            const dialog = document.getElementById('exportDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
+            setTimeout(() => {
+                dialog.classList.remove('visible');
+            }, 300);
+        }
+
+        // Add edit dialog functionality
+        function showEditDialog(index) {
+            closeAllDialogs();
+            editingIndex = index;
+            const account = accounts[index];
+            const dialog = document.getElementById('editAccountDialog');
+            
+            document.getElementById('editAccountName').value = account.name;
+            document.getElementById('editSecretKey').value = account.secret;
+            
+            dialog.classList.add('visible');
+            dialog.style.visibility = 'visible';
+            requestAnimationFrame(() => {
+                dialog.style.opacity = '1';
+                dialog.style.transform = 'translateY(0)';
+                dialog.style.pointerEvents = 'auto';
+            });
+            document.getElementById('editAccountName').focus();
+        }
+
+        function hideEditDialog() {
+            const dialog = document.getElementById('editAccountDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
+            setTimeout(() => {
+                dialog.classList.remove('visible');
+                editingIndex = -1;
+            }, 300);
+        }
+
+        function saveEditAccount() {
+            const nameInput = document.getElementById('editAccountName');
+            const secretInput = document.getElementById('editSecretKey');
+            const name = nameInput.value.trim();
+            const secret = secretInput.value.trim();
+            
+            if (!name || !secret) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (!validateSecretKey(secret)) {
+                alert('Invalid secret key format');
+                return;
+            }
+
+            if (name !== accounts[editingIndex].name && accounts.some(acc => acc.name === name)) {
+                alert('An account with this name already exists');
+                return;
+            }
+
+            accounts[editingIndex] = { name, secret };
+            saveAccounts();
+            updateAccountsDisplay();
+            updateAllCodes();
+            hideEditDialog();
+            showToast('Account updated successfully', 'success');
+        }
+
+        function showDeleteDialog(index) {
+            if (confirm('Are you sure you want to delete this account?')) {
+                deleteAccount(index);
+            }
+        }
+
+        // Add loading states for all async operations
+        function showLoadingState(button, text) {
+            button.disabled = true;
+            button.classList.add('button-loading');
+            button.textContent = text;
+        }
+
+        function hideLoadingState(button, text) {
+            button.disabled = false;
+            button.classList.remove('button-loading');
+            button.textContent = text;
+        }
+
+        // Add toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
     </script>
 </body>
 </html>
