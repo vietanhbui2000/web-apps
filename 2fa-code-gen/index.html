@@ -235,7 +235,8 @@
             flex-shrink: 0;
         }
 
-        .account-name-container:hover .account-actions {
+        .account-name-container:hover .account-actions,
+        .account-name-container .account-actions:has(.edit.active) {
             opacity: 1;
         }
 
@@ -252,7 +253,7 @@
             border-radius: 4px;
             cursor: pointer;
             color: var(--text-secondary);
-            transition: all var(--transition-duration) var(--transition-timing);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .account-action-btn:hover {
@@ -281,14 +282,13 @@
             transform: translateX(-50%) translateY(-2px);
         }
 
-        .account-action-btn.edit:hover {
-            color: var(--primary-color);
+        .account-action-btn.edit:hover,
+        .account-action-btn.edit.active {
+            color: #ffc107; /* Yellow color */
+            background: rgba(255, 193, 7, 0.1);
         }
 
-        .account-action-btn.delete:hover {
-            color: var(--danger-color);
-        }
-
+        .account-action-btn.delete:hover,
         .account-action-btn.delete.confirm {
             color: var(--danger-color);
             background: rgba(220, 53, 69, 0.1);
@@ -374,16 +374,25 @@
             background-color: rgba(220, 53, 69, 0.1);
         }
 
+        /* Update footer styles */
         .footer {
             text-align: center;
-            padding: 1.25rem 2rem;
+            padding: 1.5rem 2rem;
             color: var(--text-secondary);
             font-size: 0.875rem;
             border-top: 1px solid var(--border-color);
             background: var(--bg-secondary);
-            margin: 0 -2rem -2rem;
+            margin: 0 -2rem -2rem; /* Remove top margin */
             border-radius: 0 0 var(--border-radius) var(--border-radius);
             opacity: 0.9;
+        }
+
+        /* Update mobile-specific footer styles */
+        @media (max-width: 768px) {
+            .footer {
+                padding: 1.25rem 1rem;
+                margin: 0 -1rem -1rem; /* Remove top margin */
+            }
         }
 
         .footer a {
@@ -397,91 +406,44 @@
             text-decoration: underline;
         }
 
-        /* Mobile styles */
         @media (max-width: 480px) {
             body {
-                padding: 0.5rem;
+                padding: 0;
                 height: 100%;
+                overscroll-behavior: none;
             }
 
             .container {
-                padding: var(--spacing-md);
-            }
-
-            h1 {
-                font-size: 1.75rem;
-            }
-
-            .code-display {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.75rem;
                 padding: 1rem;
+                border-radius: 0;
+                min-height: 100vh;
+                max-height: 100vh;
             }
 
-            .account-name-container {
-                max-width: none;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                margin-right: 0;
+            .add-account-section {
+                position: sticky;
+                bottom: 0;
+                margin: 0 -1rem -1rem;
+                border-radius: 0;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
             }
 
-            .account-name {
-                font-size: 1rem;
-                max-width: calc(100% - 80px); /* Leave space for buttons */
+            .codes-container {
+                margin: 0 -1rem;
+                padding: 0 1rem;
             }
 
-            .account-actions {
-                opacity: 0.7;
-                position: static;
-                display: flex;
-                gap: 0.5rem;
-                margin-left: auto;
-            }
-
-            .account-action-btn {
-                width: 36px;
-                height: 36px;
-                background: rgba(0, 0, 0, 0.03);
-            }
-
-            .code-wrapper {
-                margin: 0;
-                width: 100%;
-                padding: 0.75rem;
-                background: rgba(0, 0, 0, 0.02);
-            }
-
-            .code {
-                font-size: 1.75rem;
-                letter-spacing: 2px;
-            }
-
-            /* Remove swipe hint since we're showing buttons */
-            .account-name-container::after {
-                display: none;
-            }
-
-            /* Hide tooltips on mobile */
-            .action-tooltip,
-            .tooltip {
-                display: none;
-            }
-
-            /* Adjust timer progress for mobile */
-            .timer-progress {
-                border-width: 1.5px;
-            }
-
-            /* Improve tap targets */
-            .account-action-btn {
-                font-size: 1.1rem;
-            }
-
-            /* Adjust copy animation for mobile */
-            .code-wrapper.copied::after {
-                font-size: 2rem;
+            /* iOS specific styles */
+            @supports (-webkit-touch-callout: none) {
+                body {
+                    height: -webkit-fill-available;
+                }
+                
+                .container {
+                    min-height: -webkit-fill-available;
+                    max-height: -webkit-fill-available;
+                }
             }
         }
 
@@ -660,6 +622,12 @@
             transform: translateX(-50%) translateY(-4px);
         }
 
+        /* Remove the checkmark animation styles */
+        .code-wrapper.copied::after {
+            display: none; /* Remove the checkmark */
+        }
+
+        /* Update copy indicator styles */
         .copy-indicator {
             position: absolute;
             top: 50%;
@@ -667,7 +635,7 @@
             transform: translate(-50%, -50%);
             color: var(--primary-color);
             font-weight: 500;
-            font-size: 1rem;
+            font-size: 1.25rem;
             pointer-events: none;
             opacity: 0;
             transition: opacity var(--transition-duration) var(--transition-timing);
@@ -1108,6 +1076,135 @@
             50% { transform: translate(-50%, -50%) scale(1.2); }
             100% { transform: translate(-50%, -50%) scale(1); }
         }
+
+        /* Update mobile styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .code-display {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+                padding: 1rem;
+            }
+
+            .account-name-container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                max-width: none;
+                margin-right: 0;
+            }
+
+            .account-name {
+                font-size: 1rem;
+                max-width: calc(100% - 80px); /* Leave space for buttons */
+            }
+
+            .account-actions {
+                opacity: 1; /* Always visible on mobile */
+                position: static;
+                display: flex;
+                gap: 0.5rem;
+                margin-left: auto;
+            }
+
+            .code-wrapper {
+                margin: 0;
+                width: 100%;
+                padding: 0.75rem;
+                background: rgba(0, 0, 0, 0.02);
+                cursor: pointer;
+            }
+
+            .code {
+                font-size: 1.75rem;
+                letter-spacing: 2px;
+            }
+
+            /* Remove double-click requirement on mobile */
+            .code-wrapper .tooltip {
+                display: none;
+            }
+
+            /* Update copy feedback for single tap */
+            .code-wrapper.copied::after {
+                display: none;
+            }
+
+            /* Improve tap targets */
+            .account-action-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
+            /* Hide tooltips on mobile */
+            .action-tooltip {
+                display: none;
+            }
+
+            /* Adjust timer progress for mobile */
+            .timer-progress {
+                border-width: 1.5px;
+            }
+
+            /* Update mobile tap feedback */
+            .account-action-btn:active {
+                transform: scale(0.95);
+            }
+
+            .account-action-btn.edit:active {
+                color: #ffc107;
+                background: rgba(255, 193, 7, 0.15);
+            }
+
+            .account-action-btn.delete:active {
+                color: var(--danger-color);
+                background: rgba(220, 53, 69, 0.15);
+            }
+
+            /* Update delete button confirmation state on mobile */
+            .account-action-btn.delete.confirm {
+                color: var(--danger-color);
+                background: rgba(220, 53, 69, 0.15);
+                transform: scale(0.95);
+            }
+
+            /* Remove hover effects on mobile */
+            .account-action-btn:hover {
+                transform: none;
+                background: none;
+            }
+
+            /* Keep active state styles */
+            .account-action-btn:active,
+            .account-action-btn.confirm {
+                transform: scale(0.95);
+            }
+
+            /* Update mobile copy indicator */
+            .copy-indicator {
+                font-size: 1.1rem;
+            }
+        }
+
+        .input-group input:invalid {
+            border-color: var(--danger-color);
+        }
+
+        .input-group .validation-message {
+            color: var(--danger-color);
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .input-group input:invalid + .validation-message {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -1144,7 +1241,10 @@
                 placeholder="e.g., Google, GitHub"
                 autocomplete="off"
                 spellcheck="false"
+                pattern="^[^|\\\n\r<>]{1,50}$"
+                title="Name cannot contain | \ or HTML tags"
             >
+            <div class="validation-message">Name cannot contain | \ or HTML tags</div>
         </div>
 
         <div class="input-group">
@@ -1228,7 +1328,8 @@
         </div>
     
         <div class="footer">
-            <p>Made with ❤️ by <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">@vietanhbui2000</a>. Built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://www.cursor.com" target="_blank" rel="noopener">Cursor</a>.</p>
+            <p>Made with ❤️ by <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">@vietanhbui2000</a>.<br>
+            Built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://www.cursor.com" target="_blank" rel="noopener">Cursor</a>.</p>
             <p style="margin-top: 0.5rem; font-size: 0.75rem">All calculations are performed locally in your browser.</p>
         </div>
     </div>
@@ -1251,6 +1352,7 @@
         // State management
         let accounts = [];
         let editingIndex = -1;
+        let activeButton = null; // Track currently active button
 
         // Simple tooltip texts
         const tooltipTexts = {
@@ -1331,7 +1433,13 @@
         }
 
         function saveAccounts() {
-            localStorage.setItem('totpAccounts', JSON.stringify(accounts));
+            try {
+                localStorage.setItem('totpAccounts', JSON.stringify(accounts));
+                showToast('Changes saved', 'success', 1000);
+            } catch (error) {
+                showToast('Failed to save changes', 'error');
+                console.error('Save error:', error);
+            }
         }
 
         // Account management
@@ -1344,9 +1452,13 @@
             }
         }
 
-        // Add name validation
+        // Update name validation
         function validateAccountName(name) {
-            return name.length >= 1 && name.length <= 50 && /^[a-zA-Z0-9\s_-]+$/.test(name);
+            // Only restrict characters that could cause issues with HTML/JavaScript
+            return name.length >= 1 && 
+                   name.length <= 50 && 
+                   !/<[^>]*>/.test(name) && // Prevent HTML tags
+                   !/[\|\\\n\r]/.test(name); // Prevent characters that could break import/export
         }
 
         async function addAccount() {
@@ -1361,7 +1473,13 @@
             }
 
             if (!validateAccountName(name)) {
-                showToast('Account name can only contain letters, numbers, spaces, underscores, and hyphens', 'error');
+                if (name.length < 1 || name.length > 50) {
+                    showToast('Account name must be between 1 and 50 characters', 'error');
+                } else if (/<[^>]*>/.test(name)) {
+                    showToast('Account name cannot contain HTML tags', 'error');
+                } else if (/[\|\\\n\r]/.test(name)) {
+                    showToast('Account name cannot contain | \\ or line breaks', 'error');
+                }
                 return;
             }
 
@@ -1402,13 +1520,28 @@
             showToast('Account added successfully', 'success');
         }
 
-        // Update deleteAccount function with mouse leave handling
+        // Update deleteAccount function
         let deleteTimeout = null;
         let deleteTarget = null;
 
         function deleteAccount(index, button) {
+            // If there's an active button and it's not this one, reset it
+            if (activeButton && activeButton !== button) {
+                if (activeButton.classList.contains('edit')) {
+                    hideEditDialog();
+                } else if (activeButton.classList.contains('delete')) {
+                    resetDeleteButton(activeButton);
+                    clearTimeout(deleteTimeout);
+                    deleteTimeout = null;
+                    deleteTarget = null;
+                }
+            }
+            
+            activeButton = button;
+            const isMobile = window.innerWidth <= 768;
+            
             if (deleteTimeout && deleteTarget === button) {
-                // Second click - proceed with deletion
+                // Second click/tap - proceed with deletion
                 clearTimeout(deleteTimeout);
                 deleteTimeout = null;
                 deleteTarget = null;
@@ -1439,8 +1572,11 @@
                     'info',
                     5000
                 );
+                
+                // Reset active button after deletion
+                activeButton = null;
             } else {
-                // First click - show confirmation state
+                // First click/tap - show confirmation state
                 if (deleteTimeout) {
                     clearTimeout(deleteTimeout);
                     resetDeleteButton(deleteTarget);
@@ -1450,18 +1586,19 @@
                 button.querySelector('.action-tooltip').textContent = 'Click again to delete';
                 deleteTarget = button;
                 
-                // Add mouse leave handler
-                const handleMouseLeave = () => {
-                    button.removeEventListener('mouseleave', handleMouseLeave);
-                    clearTimeout(deleteTimeout);
-                    resetDeleteButton(button);
-                    deleteTimeout = null;
-                    deleteTarget = null;
-                };
+                if (!isMobile) {
+                    // Only add mouse leave handler on desktop
+                    const handleMouseLeave = () => {
+                        button.removeEventListener('mouseleave', handleMouseLeave);
+                        clearTimeout(deleteTimeout);
+                        resetDeleteButton(button);
+                        deleteTimeout = null;
+                        deleteTarget = null;
+                    };
+                    button.addEventListener('mouseleave', handleMouseLeave);
+                }
                 
-                button.addEventListener('mouseleave', handleMouseLeave);
-                
-                // Set timeout for 3 seconds
+                // Set timeout for confirmation state
                 deleteTimeout = setTimeout(() => {
                     resetDeleteButton(button);
                     deleteTimeout = null;
@@ -1475,6 +1612,7 @@
             if (button) {
                 button.classList.remove('confirm');
                 button.querySelector('.action-tooltip').textContent = tooltipTexts.delete;
+                activeButton = null; // Reset active button
             }
         }
 
@@ -1503,6 +1641,9 @@
                 toggleBtn.classList.remove('active');
             }
             
+            const isMobile = window.innerWidth <= 768;
+            const clickEvent = isMobile ? 'onclick' : 'ondblclick';
+            
             container.innerHTML = `
                 <div class="codes-container-inner">
                     ${accounts.map((account, index) => `
@@ -1521,8 +1662,8 @@
                                     </button>
                     </div>
                 </div>
-                            <div class="code-wrapper">
-                                <div class="code" id="code-${index}" ondblclick="copyCode(${index})">------</div>
+                            <div class="code-wrapper" ${clickEvent}="copyCode(${index})">
+                                <div class="code" id="code-${index}">------</div>
                                 <div class="copy-indicator">Copied!</div>
                                 <span class="tooltip">${tooltipTexts.copy}</span>
                             </div>
@@ -1603,6 +1744,7 @@
                 addAccountForm.style.visibility = 'hidden';
                 toggleBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 toggleBtn.classList.remove('active');
+                
                 setTimeout(() => {
                     addAccountForm.classList.remove('visible');
                 }, 300);
@@ -1623,6 +1765,21 @@
             if (editDialog.classList.contains('visible')) {
                 hideEditDialog();
             }
+
+            // Reset any active delete button
+            if (activeButton && activeButton.classList.contains('delete')) {
+                resetDeleteButton(activeButton);
+                clearTimeout(deleteTimeout);
+                deleteTimeout = null;
+                deleteTarget = null;
+            }
+            
+            // Reset any active edit button
+            if (activeButton && activeButton.classList.contains('edit')) {
+                activeButton.classList.remove('active');
+            }
+            
+            activeButton = null;
         }
 
         // Update dialog open functions
@@ -1715,30 +1872,30 @@
             const btn = event.target;
             try {
                 await navigator.clipboard.writeText(text);
-                btn.classList.add('copied');
-                btn.textContent = 'Copied!';
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.textContent = 'Copy to Clipboard';
-                }, 1500);
+                showToast('Accounts copied to clipboard', 'success');
+                hideExportDialog();
             } catch (err) {
-                alert('Failed to copy text to clipboard');
+                showToast('Failed to copy to clipboard', 'error');
             }
         }
 
         async function importAccounts() {
-            if (accounts.length > 0 && !confirm('This will add to your existing accounts. Continue?')) {
-                return;
+            if (accounts.length > 0) {
+                const confirmed = await showConfirm(
+                    'Import Accounts',
+                    'This will add to your existing accounts. Continue?',
+                    'Import'
+                );
+                if (!confirmed) return;
             }
+
             const btn = document.querySelector('#importDialog button');
-            btn.disabled = true;
-            btn.classList.add('button-loading');
-            btn.textContent = 'Importing...';
+            showLoadingState(btn, 'Importing...');
 
             try {
                 const text = document.getElementById('importText').value.trim();
                 if (!text) {
-                    alert('Please enter some accounts to import');
+                    showToast('Please enter some accounts to import', 'error');
                     return;
                 }
 
@@ -1747,32 +1904,41 @@
                 let errors = [];
                 let accountsToImport = [];
                 
-                // First pass: validate all accounts and collect errors
                 lines.forEach((line, index) => {
                     const [name, secret] = line.split('|').map(s => s.trim());
-                    if (name && secret) {
-                        try {
-                            if (validateSecretKey(secret)) {
-                                if (accounts.some(acc => acc.name === name)) {
-                                    errors.push(`Line ${index + 1}: Account "${name}" already exists`);
-                                } else {
-                                    accountsToImport.push({ name, secret });
-                                }
-                            } else {
-                                errors.push(`Line ${index + 1}: Invalid secret key for "${name}"`);
-                            }
-                        } catch (error) {
-                            errors.push(`Line ${index + 1}: Error processing "${name}"`);
-                        }
+                    if (!name || !secret) {
+                        errors.push(`Line ${index + 1}: Invalid format. Expected "name|secret"`);
+                        return;
                     }
+                    
+                    if (!validateAccountName(name)) {
+                        if (name.length < 1 || name.length > 50) {
+                            errors.push(`Line ${index + 1}: Account name "${name}" must be between 1 and 50 characters`);
+                        } else if (/<[^>]*>/.test(name)) {
+                            errors.push(`Line ${index + 1}: Account name cannot contain HTML tags`);
+                        } else if (/[\|\\\n\r]/.test(name)) {
+                            errors.push(`Line ${index + 1}: Account name cannot contain | \\ or line breaks`);
+                        }
+                        return;
+                    }
+
+                    if (!validateSecretKey(secret)) {
+                        errors.push(`Line ${index + 1}: Invalid secret key for "${name}"`);
+                        return;
+                    }
+
+                    if (accounts.some(acc => acc.name === name)) {
+                        errors.push(`Line ${index + 1}: Account "${name}" already exists`);
+                        return;
+                    }
+
+                    accountsToImport.push({ name, secret });
                 });
 
-                // Show warnings first if any
                 if (errors.length > 0) {
-                    alert(`Import warnings:\n\n${errors.join('\n')}`);
+                    showToast(`Import warnings:\n\n${errors.join('\n')}`, 'warning', 5000);
                 }
 
-                // Then proceed with import if there are valid accounts
                 if (accountsToImport.length > 0) {
                     accounts.push(...accountsToImport);
                     saveAccounts();
@@ -1780,36 +1946,41 @@
                     updateAllCodes();
                     hideImportDialog();
                     showToast(`Successfully imported ${accountsToImport.length} account(s)`, 'success');
-                } else {
-                    alert('No valid accounts found to import');
+                } else if (errors.length === 0) {
+                    showToast('No valid accounts found to import', 'error');
                 }
             } finally {
-                btn.disabled = false;
-                btn.classList.remove('button-loading');
-                btn.textContent = 'Import';
+                hideLoadingState(btn, 'Import');
             }
         }
 
         // Update copy function
-        async function copyCode(index) {
-            try {
-                const codeElement = document.getElementById(`code-${index}`);
-                const code = codeElement.textContent;
-                const wrapper = codeElement.parentElement;
-                const indicator = wrapper.querySelector('.copy-indicator');
-                
-                await navigator.clipboard.writeText(code);
-                
-                // Add copied class for visual feedback
-                wrapper.classList.add('copied');
-                
-                // Reset states after delay
-                setTimeout(() => {
-                    wrapper.classList.remove('copied');
-                }, 1000);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy code to clipboard');
+        function copyCode(index) {
+            const isMobile = window.innerWidth <= 768;
+            const codeElement = document.getElementById(`code-${index}`);
+            const wrapper = codeElement.parentElement;
+            
+            // If it's mobile, copy on single click
+            if (isMobile) {
+                performCopy();
+            } else {
+                // On desktop, only copy on double click
+                wrapper.addEventListener('dblclick', performCopy, { once: true });
+            }
+
+            async function performCopy() {
+                try {
+                    const code = codeElement.textContent;
+                    await navigator.clipboard.writeText(code);
+                    
+                    wrapper.classList.add('copied');
+                    setTimeout(() => {
+                        wrapper.classList.remove('copied');
+                    }, 1000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    showToast('Failed to copy code to clipboard', 'error');
+                }
             }
         }
 
@@ -1944,10 +2115,29 @@
 
         // Update edit dialog functionality
         function showEditDialog(index) {
+            const editButton = document.querySelector(`.code-display:nth-child(${index + 1}) .account-action-btn.edit`);
+            
+            // If there's an active button and it's not this one, reset it
+            if (activeButton && activeButton !== editButton) {
+                if (activeButton.classList.contains('delete')) {
+                    resetDeleteButton(activeButton);
+                    clearTimeout(deleteTimeout);
+                    deleteTimeout = null;
+                    deleteTarget = null;
+                } else if (activeButton.classList.contains('edit')) {
+                    hideEditDialog();
+                }
+            }
+            
+            // Call closeAllDialogs before setting new active button
             closeAllDialogs();
+            activeButton = editButton;
             editingIndex = index;
+            
             const account = accounts[index];
             const dialog = document.getElementById('editAccountDialog');
+            
+            editButton.classList.add('active');
             
             document.getElementById('editAccountName').value = account.name;
             document.getElementById('editSecretKey').value = account.secret;
@@ -1964,6 +2154,12 @@
 
         function hideEditDialog() {
             const dialog = document.getElementById('editAccountDialog');
+            const activeEditButton = document.querySelector('.account-action-btn.edit.active');
+            if (activeEditButton) {
+                activeEditButton.classList.remove('active');
+            }
+            activeButton = null; // Reset active button
+            
             dialog.style.opacity = '0';
             dialog.style.transform = 'translateY(10px)';
             dialog.style.pointerEvents = 'none';
@@ -1981,22 +2177,28 @@
             const secret = secretInput.value.trim();
             
             if (!name || !secret) {
-                alert('Please fill in all fields');
+                showToast('Please fill in all fields', 'error');
                 return;
             }
 
             if (!validateAccountName(name)) {
-                showToast('Account name can only contain letters, numbers, spaces, underscores, and hyphens', 'error');
+                if (name.length < 1 || name.length > 50) {
+                    showToast('Account name must be between 1 and 50 characters', 'error');
+                } else if (/<[^>]*>/.test(name)) {
+                    showToast('Account name cannot contain HTML tags', 'error');
+                } else if (/[\|\\\n\r]/.test(name)) {
+                    showToast('Account name cannot contain | \\ or line breaks', 'error');
+                }
                 return;
             }
 
             if (!validateSecretKey(secret)) {
-                alert('Invalid secret key format');
+                showToast('Invalid secret key format', 'error');
                 return;
             }
 
             if (name !== accounts[editingIndex].name && accounts.some(acc => acc.name === name)) {
-                alert('An account with this name already exists');
+                showToast('An account with this name already exists', 'error');
                 return;
             }
 
