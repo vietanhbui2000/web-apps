@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Simple, secure 2FA code generator that works locally in your browser. Built with Claude.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Simple, secure 2FA code generator that works locally in your browser. Built with Claude & Cursor.">
     <meta name="theme-color" content="#007bff">
     <title>2FA Code Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <style>
         :root {
             --primary-color: #007bff;
@@ -147,11 +149,6 @@
             );
         }
 
-        .codes-container::before,
-        .codes-container::after {
-            display: none;
-        }
-
         .codes-container-inner {
             padding: 1rem 0;
             display: flex;
@@ -173,18 +170,22 @@
             flex-shrink: 0;
             justify-content: space-between;
             box-shadow: var(--shadow);
-            transition: transform 0.2s var(--transition-timing),
-                        box-shadow 0.2s var(--transition-timing),
-                        background-color 0.2s var(--transition-timing);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        outline-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+            outline: 2px solid transparent;
+            outline-offset: 2px;
         }
 
         .code-display:hover {
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--hover-shadow);
+            border-color: var(--border-color);
         }
 
         .code-display:focus-within {
-            outline: 2px solid var(--primary-color);
-            outline-offset: 2px;
+            outline-color: var(--primary-color);
         }
 
         .account-name-container {
@@ -195,6 +196,11 @@
             gap: 0.5rem;
             min-width: 0;
             max-width: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .code-display:hover .account-name-container {
+            transform: translateX(4px);
         }
 
         .account-name {
@@ -209,6 +215,16 @@
             white-space: nowrap;
             flex: 1;
             min-width: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .code-display:hover .account-name {
+            font-weight: 600;
+            transform: scale(1.02);
+        }
+
+        .account-name-container:hover .account-name {
+            color: var(--primary-color);
         }
 
         .account-actions {
@@ -273,29 +289,41 @@
             color: var(--danger-color);
         }
 
-        .account-actions-tooltip {
-            display: none;
+        .account-action-btn.delete.confirm {
+            color: var(--danger-color);
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .account-action-btn.delete.confirm .action-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-2px);
+            background: var(--danger-color);
         }
 
         .code-wrapper {
             position: relative;
             padding: 0.75rem 1.25rem;
             background: rgba(0, 0, 0, 0.03);
-            border-radius: 8px;
-            transition: all var(--transition-duration) var(--transition-timing);
+            border-radius: var(--border-radius);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             flex-shrink: 0;
             min-width: 160px;
             text-align: center;
             margin-left: auto;
+            border: 1px solid transparent;
         }
 
         .code-wrapper:hover {
-            background: rgba(0, 0, 0, 0.06);
+            background: rgba(0, 123, 255, 0.05);
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
         }
 
         .code-wrapper.copied {
             background: rgba(0, 123, 255, 0.08);
-            transition: background-color 0.2s ease;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
         }
 
         .code {
@@ -306,7 +334,7 @@
             font-weight: 600;
             margin: 0;
             user-select: none;
-            transition: all var(--transition-duration) var(--transition-timing);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
             z-index: 1;
@@ -315,6 +343,7 @@
         .code:hover {
             color: var(--primary-color);
             transform: scale(1.02);
+            letter-spacing: 4px;
         }
 
         .delete-btn {
@@ -345,41 +374,16 @@
             background-color: rgba(220, 53, 69, 0.1);
         }
 
-        .timer-wrapper {
-            display: none;
-        }
-
-        .timer-circle {
-            display: none;
-        }
-
-        .timer-text {
-            display: none;
-        }
-
-        .progress-bar {
-            display: none;
-        }
-
-        .code-progress {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background-color: var(--primary-color);
-            opacity: 0.1;
-            transition: width 1s linear;
-        }
-
         .footer {
             text-align: center;
-            padding: 1.5rem 2rem;
+            padding: 1.25rem 2rem;
             color: var(--text-secondary);
             font-size: 0.875rem;
             border-top: 1px solid var(--border-color);
             background: var(--bg-secondary);
             margin: 0 -2rem -2rem;
             border-radius: 0 0 var(--border-radius) var(--border-radius);
+            opacity: 0.9;
         }
 
         .footer a {
@@ -409,60 +413,75 @@
             }
 
             .code-display {
-                gap: var(--spacing-sm);
-                padding: var(--spacing-md);
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+                padding: 1rem;
             }
 
             .account-name-container {
-                max-width: 45%;
+                max-width: none;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                margin-right: 0;
             }
 
             .account-name {
-                font-size: 0.85rem;
+                font-size: 1rem;
+                max-width: calc(100% - 80px); /* Leave space for buttons */
+            }
+
+            .account-actions {
+                opacity: 0.7;
+                position: static;
+                display: flex;
+                gap: 0.5rem;
+                margin-left: auto;
+            }
+
+            .account-action-btn {
+                width: 36px;
+                height: 36px;
+                background: rgba(0, 0, 0, 0.03);
             }
 
             .code-wrapper {
-                flex: 1;
-                min-width: 0;
-                padding: var(--spacing-sm) var(--spacing-md);
-                margin-right: var(--spacing-lg);
+                margin: 0;
+                width: 100%;
+                padding: 0.75rem;
+                background: rgba(0, 0, 0, 0.02);
             }
 
             .code {
-                font-size: 1.5rem;
+                font-size: 1.75rem;
                 letter-spacing: 2px;
+            }
+
+            /* Remove swipe hint since we're showing buttons */
+            .account-name-container::after {
+                display: none;
             }
 
             /* Hide tooltips on mobile */
             .action-tooltip,
-            .code-wrapper .tooltip {
+            .tooltip {
                 display: none;
             }
 
-            /* Always show action buttons on mobile */
-            .account-actions {
-                opacity: 0.7;
-            }
-
+            /* Adjust timer progress for mobile */
             .timer-progress {
                 border-width: 1.5px;
             }
 
-            /* Adjust dialog padding */
-            .dialog-base,
-            .add-account-form,
-            .edit-account-dialog {
-                padding: var(--spacing-lg);
-            }
-
-            /* Adjust button sizes */
+            /* Improve tap targets */
             .account-action-btn {
-                width: 32px;
-                height: 32px;
+                font-size: 1.1rem;
             }
 
-            .code {
-                padding: 0.5rem;
+            /* Adjust copy animation for mobile */
+            .code-wrapper.copied::after {
+                font-size: 2rem;
             }
         }
 
@@ -498,12 +517,13 @@
         }
 
         .add-account-section {
-            background: var(--bg-secondary);
-            padding: 2rem;
+            background: white;
+            padding: 1.75rem 2rem;
             margin: 0 -2rem;
             border-radius: 0 0 var(--border-radius) var(--border-radius);
             position: relative;
             z-index: 5;
+            border-top: 1px solid var(--border-color);
         }
 
         .add-account-form {
@@ -571,52 +591,29 @@
 
         .import-export {
             display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
+            align-items: center;
+            gap: 1.25rem;
+            margin: 0;
         }
 
-        .import-export button {
+        .import-export button:not(.toggle-btn) {
             flex: 1;
-            background-color: white;
+            background-color: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
-            padding: 0.75rem;
+            padding: 1rem;
             border-radius: var(--border-radius);
             font-weight: 500;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 120px;
+            font-size: 0.95rem;
         }
 
-        .import-export button:hover {
-            background-color: var(--bg-secondary);
+        .import-export button:not(.toggle-btn):hover {
+            background-color: white;
             border-color: var(--primary-color);
             transform: translateY(-2px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .timer-circle {
-            width: 28px;
-            height: 28px;
-        }
-
-        .timer-circle .background {
-            stroke: var(--border-color);
-            stroke-width: 3;
-            transition: var(--transition);
-        }
-
-        .timer-circle .progress {
-            stroke: var(--primary-color);
-            stroke-width: 3;
-            transition: stroke-dasharray 1s linear, stroke var(--transition);
-        }
-
-        .timer-wrapper:hover .timer-circle .progress {
-            stroke: var(--primary-hover);
-        }
-
-        .timer-wrapper:hover .timer-circle .background {
-            stroke: var(--border-color);
-            opacity: 0.8;
         }
 
         .tooltip {
@@ -634,19 +631,10 @@
             line-height: 1;
         }
 
-        .delete-btn:hover .tooltip,
-        .timer-wrapper:hover .tooltip {
-            opacity: 1;
-        }
+        .delete-btn:hover .tooltip
 
         .delete-btn .tooltip {
             right: calc(100% + 8px);
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .timer-wrapper .tooltip {
-            left: calc(100% + 8px);
             top: 50%;
             transform: translateY(-50%);
         }
@@ -738,15 +726,25 @@
         .section-divider {
             margin: auto -2rem 0;
             height: 1px;
-            background: var(--border-color);
+            background: transparent;
             border: none;
+            margin-bottom: -1px; /* To prevent double border with add-account-section */
         }
 
         .toggle-btn {
             background-color: transparent;
             color: var(--primary-color);
             border: 2px solid var(--primary-color);
-            font-weight: 500;
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            margin: 0 0.5rem;
+            border-radius: var(--border-radius);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -788,7 +786,7 @@
             }
         }
 
-        /* Timer progress line */
+        /* Update timer progress styles */
         .timer-progress {
             position: absolute;
             pointer-events: none;
@@ -796,13 +794,20 @@
             border: 2px solid var(--primary-color);
             border-radius: var(--border-radius);
             opacity: 0.15;
-            clip-path: inset(0 0 0 0);
-            transition: none;
+            clip-path: inset(0 0 0 0); /* Start fully visible */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                        clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Add initial transition */
         }
 
         .timer-progress.animate {
             clip-path: inset(0 0 0 var(--progress));
-            transition: clip-path 1s linear;
+            transition: clip-path 1s linear; /* Keep linear transition for the timer */
+        }
+
+        /* Add hover effect for timer */
+        .code-display:hover .timer-progress {
+            opacity: 0.3;
+            border-width: 3px;
         }
 
         /* Dialog base styles */
@@ -828,7 +833,9 @@
             z-index: 10;
         }
 
-        .dialog-base.visible {
+        .dialog-base.visible,
+        .edit-account-dialog.visible,
+        .add-account-form.visible {
             opacity: 1;
             transform: translateY(0);
             pointer-events: auto;
@@ -898,52 +905,73 @@
             color: white;
         }
 
-        /* Toast notifications */
+        /* Update toast styles */
         .toast {
             position: fixed;
-            bottom: 2rem;
+            bottom: 4rem;
             left: 50%;
-            transform: translateX(-50%) translateY(10px);
+            transform: translate(-50%, 100%);
             background: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 0.75rem 1.5rem;
             border-radius: var(--border-radius);
             font-size: 0.9rem;
             opacity: 0;
-            transition: all var(--transition-duration) var(--transition-timing);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 100;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 1rem;
+            pointer-events: none;
+            text-align: center;
+            min-width: 200px;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
+        .toast.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+            pointer-events: auto;
+        }
+
+        /* Update toast button styles */
         .toast button {
             background: none;
             border: none;
             color: white;
             text-decoration: underline;
             padding: 0;
+            margin: 0;
             font-size: inherit;
             cursor: pointer;
             width: auto;
+            min-width: auto;
+            font-weight: normal;
         }
 
         .toast button:hover {
             text-decoration: none;
             transform: none;
             box-shadow: none;
+            background: none;
         }
 
         .toast-success {
-            background: rgba(40, 167, 69, 0.9);
+            background: rgba(40, 167, 69, 0.95);
+        }
+
+        .toast-warning {
+            background: rgba(255, 193, 7, 0.95);
         }
 
         .toast-error {
-            background: rgba(220, 53, 69, 0.9);
+            background: rgba(220, 53, 69, 0.95);
         }
 
         .toast-info {
-            background: rgba(0, 123, 255, 0.9);
+            background: rgba(0, 123, 255, 0.95);
         }
 
         /* Add loading skeleton animation */
@@ -967,6 +995,119 @@
             padding: 0.1em 0;
             border-radius: 2px;
         }
+
+        /* Add border color change only when hovering name container */
+        .account-name-container:hover .code-display {
+            border-color: var(--primary-color);
+        }
+
+        /* Add confirmation dialog styles */
+        .confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, calc(-50% + 20px)) scale(0.95);
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--hover-shadow);
+            max-width: 90%;
+            width: 400px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .confirm-dialog.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .confirm-dialog-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+        }
+
+        .confirm-dialog-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .confirm-dialog h3 {
+            margin: 0 0 1rem;
+            color: var(--text-primary);
+        }
+
+        .confirm-dialog p {
+            margin: 0 0 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .confirm-dialog-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .confirm-dialog-buttons button {
+            flex: 1;
+        }
+
+        .confirm-dialog-buttons .secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .confirm-dialog-buttons .danger {
+            background: var(--danger-color);
+        }
+
+        .confirm-dialog-buttons .danger:hover {
+            background: var(--danger-hover);
+        }
+
+        /* Update loading animation */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .code.loading {
+            background: linear-gradient(90deg, 
+                var(--bg-secondary) 25%, 
+                var(--border-color) 50%, 
+                var(--bg-secondary) 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            color: transparent;
+            border-radius: 4px;
+        }
+
+        /* Update copy animation */
+        .code-wrapper.copied::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            animation: pop-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pop-in {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -987,7 +1128,11 @@
         <hr class="section-divider">
 
         <div id="addAccountSection" class="add-account-section">
-            <button id="toggleAddAccount" class="toggle-btn">+ Add New Account</button>
+            <div class="import-export">
+                <button onclick="showImportDialog()">Import Accounts</button>
+                <button id="toggleAddAccount" class="toggle-btn"><i class="fas fa-plus"></i></button>
+                <button onclick="showExportDialog()">Export Accounts</button>
+            </div>
             
             <div id="addAccountForm" class="add-account-form">
                 <h2>Add New Account</h2>
@@ -1019,7 +1164,7 @@
                 </div>
             </div>
 
-            <div id="editAccountDialog" class="edit-account-dialog">
+            <div id="editAccountDialog" class="edit-account-dialog dialog-base">
                 <h2>Edit Account</h2>
                 <div class="input-group">
                     <label for="editAccountName">Account Name</label>
@@ -1080,16 +1225,21 @@
                     </div>
                 </div>
             </div>
-
-            <div class="import-export">
-                <button onclick="showImportDialog()">Import Accounts</button>
-                <button onclick="showExportDialog()">Export Accounts</button>
-            </div>
         </div>
     
         <div class="footer">
             <p>Made with ❤️ by <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">@vietanhbui2000</a>. Built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://www.cursor.com" target="_blank" rel="noopener">Cursor</a>.</p>
             <p style="margin-top: 0.5rem; font-size: 0.75rem">All calculations are performed locally in your browser.</p>
+        </div>
+    </div>
+
+    <div class="confirm-dialog-overlay"></div>
+    <div class="confirm-dialog">
+        <h3></h3>
+        <p></p>
+        <div class="confirm-dialog-buttons">
+            <button class="confirm"></button>
+            <button class="secondary cancel">Cancel</button>
         </div>
     </div>
 
@@ -1167,6 +1317,7 @@
                 return (code % 1000000).toString().padStart(6, '0');
             } catch (error) {
                 console.error('Error generating TOTP:', error);
+                showToast('Error generating code', 'error');
                 return '------';
             }
         }
@@ -1193,27 +1344,34 @@
             }
         }
 
+        // Add name validation
+        function validateAccountName(name) {
+            return name.length >= 1 && name.length <= 50 && /^[a-zA-Z0-9\s_-]+$/.test(name);
+        }
+
         async function addAccount() {
-            const btn = document.querySelector('#addAccountForm button');
-            showLoadingState(btn, 'Adding...');
-            try {
             const nameInput = document.getElementById('accountName');
             const secretInput = document.getElementById('secretKey');
             const name = nameInput.value.trim();
             const secret = secretInput.value.trim();
             
             if (!name || !secret) {
-                    alert('Please fill in all fields');
+                showToast('Please fill in all fields', 'error');
                 return;
             }
 
-                if (!validateSecretKey(secret)) {
-                    alert('Invalid secret key format');
-                    return;
-                }
+            if (!validateAccountName(name)) {
+                showToast('Account name can only contain letters, numbers, spaces, underscores, and hyphens', 'error');
+                return;
+            }
 
-                if (accounts.some(acc => acc.name === name)) {
-                    alert('An account with this name already exists');
+            if (!validateSecretKey(secret)) {
+                showToast('Invalid secret key format', 'error');
+                return;
+            }
+
+            if (accounts.some(acc => acc.name === name)) {
+                showToast('An account with this name already exists', 'error');
                 return;
             }
 
@@ -1221,35 +1379,112 @@
             saveAccounts();
             updateAccountsDisplay();
             updateAllCodes();
-
-            // Clear inputs
+            
+            // Clear form and close it
             nameInput.value = '';
             secretInput.value = '';
-            nameInput.focus();
-            } finally {
-                hideLoadingState(btn, 'Add Account');
+            
+            // Close the form
+            const form = document.getElementById('addAccountForm');
+            const btn = document.getElementById('toggleAddAccount');
+            
+            form.style.opacity = '0';
+            form.style.transform = 'translateY(10px)';
+            form.style.pointerEvents = 'none';
+            form.style.visibility = 'hidden';
+            btn.innerHTML = '<i class="fas fa-plus"></i>';
+            btn.classList.remove('active');
+            
+            setTimeout(() => {
+                form.classList.remove('visible');
+            }, 300);
+            
+            showToast('Account added successfully', 'success');
+        }
+
+        // Update deleteAccount function with mouse leave handling
+        let deleteTimeout = null;
+        let deleteTarget = null;
+
+        function deleteAccount(index, button) {
+            if (deleteTimeout && deleteTarget === button) {
+                // Second click - proceed with deletion
+                clearTimeout(deleteTimeout);
+                deleteTimeout = null;
+                deleteTarget = null;
+                
+                const currentCodes = accounts.map((_, i) => {
+                    const codeElement = document.getElementById(`code-${i}`);
+                    return codeElement ? codeElement.textContent : null;
+                });
+                
+                const deletedAccount = accounts[index];
+                deletedAccounts.push({ account: deletedAccount, index });
+                
+                accounts.splice(index, 1);
+                saveAccounts();
+                updateAccountsDisplay();
+                
+                requestAnimationFrame(() => {
+                    accounts.forEach((_, i) => {
+                        const codeElement = document.getElementById(`code-${i}`);
+                        if (codeElement && i < currentCodes.length && i !== index) {
+                            codeElement.textContent = currentCodes[i] || generateTOTP(accounts[i].secret);
+                        }
+                    });
+                });
+                
+                showToast(
+                    `Account deleted. <button onclick="undoDelete()">Undo</button>`,
+                    'info',
+                    5000
+                );
+            } else {
+                // First click - show confirmation state
+                if (deleteTimeout) {
+                    clearTimeout(deleteTimeout);
+                    resetDeleteButton(deleteTarget);
+                }
+                
+                button.classList.add('confirm');
+                button.querySelector('.action-tooltip').textContent = 'Click again to delete';
+                deleteTarget = button;
+                
+                // Add mouse leave handler
+                const handleMouseLeave = () => {
+                    button.removeEventListener('mouseleave', handleMouseLeave);
+                    clearTimeout(deleteTimeout);
+                    resetDeleteButton(button);
+                    deleteTimeout = null;
+                    deleteTarget = null;
+                };
+                
+                button.addEventListener('mouseleave', handleMouseLeave);
+                
+                // Set timeout for 3 seconds
+                deleteTimeout = setTimeout(() => {
+                    resetDeleteButton(button);
+                    deleteTimeout = null;
+                    deleteTarget = null;
+                }, 3000);
             }
         }
 
-        function deleteAccount(index) {
-            const deletedAccount = accounts[index];
-            deletedAccounts.push({ account: deletedAccount, index });
-            accounts.splice(index, 1);
-            saveAccounts();
-            updateAccountsDisplay();
-            
-            showToast(
-                `Account deleted. <button onclick="undoDelete()">Undo</button>`,
-                'info'
-            );
+        // Helper function to reset delete button state
+        function resetDeleteButton(button) {
+            if (button) {
+                button.classList.remove('confirm');
+                button.querySelector('.action-tooltip').textContent = tooltipTexts.delete;
+            }
         }
 
         function undoDelete() {
-            const deleted = deletedAccounts.pop();
-            if (deleted) {
-                accounts.splice(deleted.index, 0, deleted.account);
+            if (deletedAccounts.length > 0) {
+                const { account, index } = deletedAccounts.pop();
+                accounts.splice(index, 0, account);
                 saveAccounts();
                 updateAccountsDisplay();
+                updateAllCodes();
                 showToast('Account restored', 'success');
             }
         }
@@ -1264,7 +1499,7 @@
                 addAccountForm.classList.add('visible');
             } else {
                 addAccountForm.classList.remove('visible');
-                toggleBtn.textContent = '+ Add New Account';
+                toggleBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 toggleBtn.classList.remove('active');
             }
             
@@ -1280,7 +1515,7 @@
                                         <i class="fas fa-pencil-alt"></i>
                                         <span class="action-tooltip">${tooltipTexts.edit}</span>
                                     </button>
-                                    <button class="account-action-btn delete" onclick="showDeleteDialog(${index})">
+                                    <button class="account-action-btn delete" onclick="deleteAccount(${index}, this)">
                                         <i class="fas fa-trash-alt"></i>
                                         <span class="action-tooltip">${tooltipTexts.delete}</span>
                                     </button>
@@ -1298,10 +1533,19 @@
 
             // Initialize timers and animations
             requestAnimationFrame(() => {
+                const currentTime = Math.floor(Date.now() / 1000);
+                const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
+                const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
+
                 accounts.forEach((_, index) => {
                     const progressElement = document.getElementById(`timer-progress-${index}`);
                     if (progressElement) {
-                        progressElement.classList.add('animate');
+                        // Set initial progress before adding animate class
+                        progressElement.style.setProperty('--progress', `${progress}%`);
+                        // Add animate class after a short delay
+                        setTimeout(() => {
+                            progressElement.classList.add('animate');
+                        }, 50);
                     }
                 });
                 updateTimers();
@@ -1323,19 +1567,25 @@
             const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
             const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
 
-            // Refresh codes 3 seconds before expiry
-            if (timeLeft <= 3) {
+            // Update progress bars
+            accounts.forEach((_, index) => {
+                const progressElement = document.getElementById(`timer-progress-${index}`);
+                if (progressElement) {
+                    progressElement.style.setProperty('--progress', `${progress}%`);
+                }
+            });
+
+            // If time is up (0 seconds left), update all codes
+            if (timeLeft === 0) {
                 updateAllCodes();
             }
-
-            requestAnimationFrame(() => {
-                accounts.forEach((_, index) => {
-                    const progressElement = document.getElementById(`timer-progress-${index}`);
-                    if (progressElement) {
-                        progressElement.style.setProperty('--progress', `${progress}%`);
-                    }
-                });
-            });
+            // Or if we're in the last 3 seconds, prepare for update
+            else if (timeLeft <= 3) {
+                // Schedule the update for exactly when the time hits 0
+                setTimeout(() => {
+                    updateAllCodes();
+                }, timeLeft * 1000);
+            }
         }
 
         // Add helper function to close all dialogs
@@ -1351,7 +1601,7 @@
                 addAccountForm.style.transform = 'translateY(10px)';
                 addAccountForm.style.pointerEvents = 'none';
                 addAccountForm.style.visibility = 'hidden';
-                toggleBtn.textContent = '+ Add New Account';
+                toggleBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 toggleBtn.classList.remove('active');
                 setTimeout(() => {
                     addAccountForm.classList.remove('visible');
@@ -1377,8 +1627,17 @@
 
         // Update dialog open functions
         function showImportDialog() {
-            closeAllDialogs();
             const dialog = document.getElementById('importDialog');
+            
+            // If dialog is already visible, close it
+            if (dialog.classList.contains('visible')) {
+                hideImportDialog();
+                return;
+            }
+            
+            // Close any other open dialogs first
+            closeAllDialogs();
+            
             dialog.classList.add('visible');
             dialog.style.visibility = 'visible';
             requestAnimationFrame(() => {
@@ -1390,8 +1649,17 @@
         }
 
         function showExportDialog() {
-            closeAllDialogs();
             const dialog = document.getElementById('exportDialog');
+            
+            // If dialog is already visible, close it
+            if (dialog.classList.contains('visible')) {
+                hideExportDialog();
+                return;
+            }
+            
+            // Close any other open dialogs first
+            closeAllDialogs();
+            
             const exportText = accounts.map(acc => `${acc.name}|${acc.secret}`).join('\n');
             document.getElementById('exportText').value = exportText;
             
@@ -1405,21 +1673,25 @@
             document.getElementById('exportText').select();
         }
 
-        // Update add account button click handler
+        // Update toggleAddAccount event listener
         document.getElementById('toggleAddAccount').addEventListener('click', () => {
             const form = document.getElementById('addAccountForm');
             const btn = document.getElementById('toggleAddAccount');
             
             if (form.classList.contains('visible')) {
+                // Close form
                 form.style.opacity = '0';
                 form.style.transform = 'translateY(10px)';
                 form.style.pointerEvents = 'none';
                 form.style.visibility = 'hidden';
-                btn.textContent = '+ Add New Account';
+                btn.innerHTML = '<i class="fas fa-plus"></i>';
                 btn.classList.remove('active');
                 
                 setTimeout(() => {
                     form.classList.remove('visible');
+                    // Clear form when closing
+                    document.getElementById('accountName').value = '';
+                    document.getElementById('secretKey').value = '';
                 }, 300);
                 btn.focus();
             } else {
@@ -1431,7 +1703,7 @@
                     form.style.transform = 'translateY(0)';
                     form.style.pointerEvents = 'auto';
                 });
-                btn.textContent = '× Close';
+                btn.innerHTML = '<i class="fas fa-times"></i>';
                 btn.classList.add('active');
                 document.getElementById('accountName').focus();
             }
@@ -1473,7 +1745,9 @@
                 const lines = text.split('\n').filter(line => line.trim());
                 let imported = 0;
                 let errors = [];
+                let accountsToImport = [];
                 
+                // First pass: validate all accounts and collect errors
                 lines.forEach((line, index) => {
                     const [name, secret] = line.split('|').map(s => s.trim());
                     if (name && secret) {
@@ -1482,8 +1756,7 @@
                                 if (accounts.some(acc => acc.name === name)) {
                                     errors.push(`Line ${index + 1}: Account "${name}" already exists`);
                                 } else {
-                                    accounts.push({ name, secret });
-                                    imported++;
+                                    accountsToImport.push({ name, secret });
                                 }
                             } else {
                                 errors.push(`Line ${index + 1}: Invalid secret key for "${name}"`);
@@ -1493,19 +1766,22 @@
                         }
                     }
                 });
-                
-                if (imported > 0) {
+
+                // Show warnings first if any
+                if (errors.length > 0) {
+                    alert(`Import warnings:\n\n${errors.join('\n')}`);
+                }
+
+                // Then proceed with import if there are valid accounts
+                if (accountsToImport.length > 0) {
+                    accounts.push(...accountsToImport);
                     saveAccounts();
                     updateAccountsDisplay();
                     updateAllCodes();
                     hideImportDialog();
-                    alert(`Successfully imported ${imported} account(s)`);
+                    showToast(`Successfully imported ${accountsToImport.length} account(s)`, 'success');
                 } else {
-                    alert('No valid accounts found in the text');
-                }
-
-                if (errors.length > 0) {
-                    alert(`Import completed with warnings:\n\n${errors.join('\n')}`);
+                    alert('No valid accounts found to import');
                 }
             } finally {
                 btn.disabled = false;
@@ -1540,7 +1816,11 @@
         // Update filterAccounts function
         function filterAccounts() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const container = document.getElementById('codesContainer');
+            const containerInner = container.querySelector('.codes-container-inner');
             const displays = document.querySelectorAll('.code-display');
+            
+            let hasVisibleDisplays = false;
             
             displays.forEach(display => {
                 const nameElement = display.querySelector('.account-name');
@@ -1549,6 +1829,7 @@
                 if (!searchTerm || accountName.includes(searchTerm)) {
                     display.style.display = 'flex';
                     display.style.opacity = '1';
+                    hasVisibleDisplays = true;
                     
                     // Highlight matching text
                     if (searchTerm) {
@@ -1567,15 +1848,16 @@
             });
 
             // Update container state if no results
-            const container = document.getElementById('codesContainer');
-            const hasVisibleDisplays = Array.from(displays).some(d => d.style.display !== 'none');
-            
-            if (!hasVisibleDisplays) {
-                container.innerHTML = `
+            if (!hasVisibleDisplays && searchTerm) {
+                containerInner.innerHTML = `
                     <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
                         No accounts found matching "${searchTerm}"
                     </div>
                 `;
+            } else if (!hasVisibleDisplays && !searchTerm) {
+                // If no search term, redraw the entire accounts list and update codes
+                updateAccountsDisplay();
+                updateAllCodes();
             }
         }
 
@@ -1630,10 +1912,13 @@
 
             // Initialize app
             loadAccounts();
+            // Start timer immediately
+            updateTimers();
+            // Then set interval
             setInterval(updateTimers, 1000);
         });
 
-        // Add back the hide dialog functions
+        // Update hide dialog functions
         function hideImportDialog() {
             const dialog = document.getElementById('importDialog');
             dialog.style.opacity = '0';
@@ -1657,7 +1942,7 @@
             }, 300);
         }
 
-        // Add edit dialog functionality
+        // Update edit dialog functionality
         function showEditDialog(index) {
             closeAllDialogs();
             editingIndex = index;
@@ -1700,6 +1985,11 @@
                 return;
             }
 
+            if (!validateAccountName(name)) {
+                showToast('Account name can only contain letters, numbers, spaces, underscores, and hyphens', 'error');
+                return;
+            }
+
             if (!validateSecretKey(secret)) {
                 alert('Invalid secret key format');
                 return;
@@ -1718,12 +2008,6 @@
             showToast('Account updated successfully', 'success');
         }
 
-        function showDeleteDialog(index) {
-            if (confirm('Are you sure you want to delete this account?')) {
-                deleteAccount(index);
-            }
-        }
-
         // Add loading states for all async operations
         function showLoadingState(button, text) {
             button.disabled = true;
@@ -1738,22 +2022,127 @@
         }
 
         // Add toast notifications
-        function showToast(message, type = 'info') {
+        function showToast(message, type = 'info', duration = 3000) {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-            toast.textContent = message;
+            toast.innerHTML = message;
             document.body.appendChild(toast);
             
+            // Force reflow
+            toast.offsetHeight;
+            
+            // Add visible class for animation
             requestAnimationFrame(() => {
-                toast.style.opacity = '1';
-                toast.style.transform = 'translateY(0)';
+                toast.classList.add('visible');
             });
 
             setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(10px)';
+                toast.classList.remove('visible');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, duration);
+        }
+
+        // Add custom confirm/alert functions
+        function showConfirm(title, message, confirmText = 'Confirm', type = 'primary') {
+            return new Promise((resolve) => {
+                const dialog = document.querySelector('.confirm-dialog');
+                const overlay = document.querySelector('.confirm-dialog-overlay');
+                const confirmBtn = dialog.querySelector('.confirm');
+                const cancelBtn = dialog.querySelector('.secondary');
+                
+                dialog.querySelector('h3').textContent = title;
+                dialog.querySelector('p').textContent = message;
+                confirmBtn.textContent = confirmText;
+                confirmBtn.className = `confirm ${type}`;
+                
+                const hide = () => {
+                    dialog.classList.remove('visible');
+                    overlay.classList.remove('visible');
+                };
+                
+                const handleConfirm = () => {
+                    hide();
+                    resolve(true);
+                    cleanup();
+                };
+                
+                const handleCancel = () => {
+                    hide();
+                    resolve(false);
+                    cleanup();
+                };
+                
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        handleCancel();
+                    } else if (e.key === 'Enter') {
+                        handleConfirm();
+                    }
+                };
+                
+                const cleanup = () => {
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    document.removeEventListener('keydown', handleKeydown);
+                };
+                
+                confirmBtn.addEventListener('click', handleConfirm);
+                cancelBtn.addEventListener('click', handleCancel);
+                document.addEventListener('keydown', handleKeydown);
+                
+                dialog.classList.add('visible');
+                overlay.classList.add('visible');
+            });
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + / to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            
+            // Ctrl/Cmd + N to add new account
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                if (!document.getElementById('addAccountForm').classList.contains('visible')) {
+                    document.getElementById('toggleAddAccount').click();
+                }
+            }
+        });
+
+        // Update dialog show functions
+        function showDialog(dialog, focusElement) {
+            dialog.classList.add('visible');
+            dialog.style.visibility = 'visible';
+            requestAnimationFrame(() => {
+                dialog.style.opacity = '1';
+                dialog.style.transform = 'translateY(0)';
+                dialog.style.pointerEvents = 'auto';
+                if (focusElement) {
+                    focusElement.focus();
+                    focusElement.select?.();
+                }
+            });
+        }
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
         }
     </script>
 </body>
