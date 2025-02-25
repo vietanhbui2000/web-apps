@@ -311,13 +311,13 @@
             text-align: center;
             margin-left: auto;
             border: 1px solid transparent;
+            cursor: pointer;
         }
 
         .code-wrapper:hover {
             background: rgba(0, 123, 255, 0.05);
             border-color: var(--primary-color);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
         }
 
         .code-wrapper.copied {
@@ -617,7 +617,8 @@
             white-space: nowrap;
         }
 
-        .code-wrapper:hover .tooltip {
+        .code-wrapper .code:hover ~ .tooltip,
+        .code-wrapper.clicked .tooltip {
             opacity: 1;
             transform: translateX(-50%) translateY(-4px);
         }
@@ -1670,7 +1671,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="code-wrapper" ${clickEvent}="copyCode(${index})">
+                        <div class="code-wrapper" id="code-wrapper-${index}">
                             <div class="code" id="code-${index}">------</div>
                             <div class="copy-indicator">Copied!</div>
                             <span class="tooltip">${tooltipTexts.copy}</span>
@@ -1701,8 +1702,74 @@
                         }
                     }
                     updateTimers();
+
+                    // Add click handlers to all code wrappers
+                    for (let index = 0; index < accounts.length; index++) {
+                        attachCodeCopyEvents(index);
+                    }
                 });
             }
+        }
+
+        // New function to attach copy events to code wrappers
+        function attachCodeCopyEvents(index) {
+            const wrapper = document.getElementById(`code-wrapper-${index}`);
+            const isMobile = window.innerWidth <= 768;
+            
+            if (!wrapper) return;
+            
+            // Remove previous listeners (if any)
+            wrapper.removeEventListener('click', handleClick);
+            wrapper.removeEventListener('dblclick', handleDblClick);
+            
+            // Add click handler to show tooltip
+            wrapper.addEventListener('click', handleClick);
+            
+            // Add double-click handler to copy code
+            if (!isMobile) {
+                wrapper.addEventListener('dblclick', handleDblClick);
+            }
+            
+            function handleClick(e) {
+                if (isMobile) {
+                    copyCode(index);
+                } else {
+                    // On desktop, just show tooltip on single click
+                    wrapper.classList.add('clicked');
+                    
+                    // Remove the clicked class after a delay
+                    setTimeout(() => {
+                        wrapper.classList.remove('clicked');
+                    }, 1500);
+                }
+            }
+            
+            function handleDblClick(e) {
+                copyCode(index);
+            }
+        }
+
+        // Update copyCode function to be more reliable
+        function copyCode(index) {
+            const codeElement = document.getElementById(`code-${index}`);
+            const wrapper = document.getElementById(`code-wrapper-${index}`);
+            
+            if (!codeElement || !wrapper) return;
+            
+            (async function() {
+                try {
+                    const code = codeElement.textContent;
+                    await navigator.clipboard.writeText(code);
+                    
+                    wrapper.classList.add('copied');
+                    setTimeout(() => {
+                        wrapper.classList.remove('copied');
+                    }, 1000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    showToast('Failed to copy code to clipboard', 'error');
+                }
+            })();
         }
 
         // Optimize updateAllCodes function
@@ -1962,36 +2029,6 @@
                 }
             } finally {
                 hideLoadingState(btn, 'Import');
-            }
-        }
-
-        // Update copy function
-        function copyCode(index) {
-            const isMobile = window.innerWidth <= 768;
-            const codeElement = document.getElementById(`code-${index}`);
-            const wrapper = codeElement.parentElement;
-            
-            // If it's mobile, copy on single click
-            if (isMobile) {
-                performCopy();
-            } else {
-                // On desktop, only copy on double click
-                wrapper.addEventListener('dblclick', performCopy, { once: true });
-            }
-
-            async function performCopy() {
-                try {
-                    const code = codeElement.textContent;
-                    await navigator.clipboard.writeText(code);
-                    
-                    wrapper.classList.add('copied');
-                    setTimeout(() => {
-                        wrapper.classList.remove('copied');
-                    }, 1000);
-                } catch (err) {
-                    console.error('Failed to copy:', err);
-                    showToast('Failed to copy code to clipboard', 'error');
-                }
             }
         }
 
