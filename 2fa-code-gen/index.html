@@ -762,14 +762,13 @@
             border: 2px solid var(--primary-color);
             border-radius: var(--border-radius);
             opacity: 0.15;
-            clip-path: inset(0 0 0 0); /* Start fully visible */
-            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                        clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Add initial transition */
+            clip-path: inset(0 0 0 0); 
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .timer-progress.animate {
             clip-path: inset(0 0 0 var(--progress));
-            transition: clip-path 1s linear; /* Keep linear transition for the timer */
+            transition: clip-path 1s linear; 
         }
 
         /* Add hover effect for timer */
@@ -801,7 +800,7 @@
             z-index: 10;
         }
 
-        .dialog-base.visible,
+        .dialog.visible,
         .edit-account-dialog.visible,
         .add-account-form.visible {
             opacity: 1;
@@ -1371,7 +1370,7 @@
             
             for (let i = 0; i < base32.length; i++) {
                 const val = BASE32_CHARS.indexOf(base32[i]);
-                if (val === -1) throw new Error('Invalid base32 character');
+                if (val === -1) return ''; // Return empty string instead of throwing error
                 bits += val.toString(2).padStart(5, '0');
             }
 
@@ -1399,6 +1398,7 @@
                 
                 // Convert secret from base32 to hex
                 const secretHex = base32ToHex(secret);
+                if (!secretHex) return '------'; // Handle empty secret
                 
                 // Calculate HMAC
                 const hmac = CryptoJS.HmacSHA1(
@@ -1419,7 +1419,6 @@
                 return (code % 1000000).toString().padStart(6, '0');
             } catch (error) {
                 console.error('Error generating TOTP:', error);
-                showToast('Error generating code', 'error');
                 return '------';
             }
         }
@@ -1444,6 +1443,12 @@
 
         // Account management
         function validateSecretKey(secret) {
+            if (!secret || typeof secret !== 'string') return false;
+            
+            // Quick validation before generating code
+            const cleanedSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
+            if (cleanedSecret.length < 8) return false; // Too short to be valid
+            
             try {
                 const testCode = generateTOTP(secret);
                 return testCode !== '------';
@@ -1644,77 +1649,86 @@
             const isMobile = window.innerWidth <= 768;
             const clickEvent = isMobile ? 'onclick' : 'ondblclick';
             
-            container.innerHTML = `
-                <div class="codes-container-inner">
-                    ${accounts.map((account, index) => `
-                <div class="code-display">
-                            <div class="timer-progress" id="timer-progress-${index}"></div>
-                            <div class="account-name-container">
-                                <div class="account-name">${account.name}</div>
-                                <div class="account-actions">
-                                    <button class="account-action-btn edit" onclick="showEditDialog(${index})">
-                                        <i class="fas fa-pencil-alt"></i>
-                                        <span class="action-tooltip">${tooltipTexts.edit}</span>
-                                    </button>
-                                    <button class="account-action-btn delete" onclick="deleteAccount(${index}, this)">
-                                        <i class="fas fa-trash-alt"></i>
-                                        <span class="action-tooltip">${tooltipTexts.delete}</span>
-                                    </button>
-                    </div>
-                </div>
-                            <div class="code-wrapper" ${clickEvent}="copyCode(${index})">
-                                <div class="code" id="code-${index}">------</div>
-                                <div class="copy-indicator">Copied!</div>
-                                <span class="tooltip">${tooltipTexts.copy}</span>
+            // Create HTML string once instead of using template literals in a loop
+            let html = '<div class="codes-container-inner">';
+            
+            for (let index = 0; index < accounts.length; index++) {
+                const account = accounts[index];
+                html += `
+                    <div class="code-display">
+                        <div class="timer-progress" id="timer-progress-${index}"></div>
+                        <div class="account-name-container">
+                            <div class="account-name">${account.name}</div>
+                            <div class="account-actions">
+                                <button class="account-action-btn edit" onclick="showEditDialog(${index})">
+                                    <i class="fas fa-pencil-alt"></i>
+                                    <span class="action-tooltip">${tooltipTexts.edit}</span>
+                                </button>
+                                <button class="account-action-btn delete" onclick="deleteAccount(${index}, this)">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span class="action-tooltip">${tooltipTexts.delete}</span>
+                                </button>
                             </div>
                         </div>
-                    `).join('')}
-                </div>
-            `;
+                        <div class="code-wrapper" ${clickEvent}="copyCode(${index})">
+                            <div class="code" id="code-${index}">------</div>
+                            <div class="copy-indicator">Copied!</div>
+                            <span class="tooltip">${tooltipTexts.copy}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
 
             // Initialize timers and animations
-            requestAnimationFrame(() => {
-                const currentTime = Math.floor(Date.now() / 1000);
-                const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
-                const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
+            if (accounts.length > 0) {
+                requestAnimationFrame(() => {
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
+                    const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
 
-                accounts.forEach((_, index) => {
-                    const progressElement = document.getElementById(`timer-progress-${index}`);
-                    if (progressElement) {
-                        // Set initial progress before adding animate class
-                        progressElement.style.setProperty('--progress', `${progress}%`);
-                        // Add animate class after a short delay
-                        setTimeout(() => {
-                            progressElement.classList.add('animate');
-                        }, 50);
+                    for (let index = 0; index < accounts.length; index++) {
+                        const progressElement = document.getElementById(`timer-progress-${index}`);
+                        if (progressElement) {
+                            // Set initial progress before adding animate class
+                            progressElement.style.setProperty('--progress', `${progress}%`);
+                            // Add animate class after a short delay
+                            setTimeout(() => {
+                                progressElement.classList.add('animate');
+                            }, 50);
+                        }
                     }
+                    updateTimers();
                 });
-                updateTimers();
-            });
+            }
         }
 
+        // Optimize updateAllCodes function
         function updateAllCodes() {
-            accounts.forEach((account, index) => {
-                const code = generateTOTP(account.secret);
+            for (let index = 0; index < accounts.length; index++) {
+                const code = generateTOTP(accounts[index].secret);
                 const codeElement = document.getElementById(`code-${index}`);
                 if (codeElement) {
                     codeElement.textContent = code;
                 }
-            });
+            }
         }
 
+        // Optimize updateTimers function
         function updateTimers() {
             const currentTime = Math.floor(Date.now() / 1000);
             const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
             const progress = ((TOTP_INTERVAL - timeLeft) / TOTP_INTERVAL) * 100;
 
             // Update progress bars
-            accounts.forEach((_, index) => {
+            for (let index = 0; index < accounts.length; index++) {
                 const progressElement = document.getElementById(`timer-progress-${index}`);
                 if (progressElement) {
                     progressElement.style.setProperty('--progress', `${progress}%`);
                 }
-            });
+            }
 
             // If time is up (0 seconds left), update all codes
             if (timeLeft === 0) {
@@ -1734,6 +1748,7 @@
             const addAccountForm = document.getElementById('addAccountForm');
             const importDialog = document.getElementById('importDialog');
             const exportDialog = document.getElementById('exportDialog');
+            const editDialog = document.getElementById('editAccountDialog');
             const toggleBtn = document.getElementById('toggleAddAccount');
 
             // Close add account form if open
@@ -1761,7 +1776,6 @@
             }
 
             // Close edit dialog if open
-            const editDialog = document.getElementById('editAccountDialog');
             if (editDialog.classList.contains('visible')) {
                 hideEditDialog();
             }
@@ -1797,11 +1811,10 @@
             
             dialog.classList.add('visible');
             dialog.style.visibility = 'visible';
-            requestAnimationFrame(() => {
-                dialog.style.opacity = '1';
-                dialog.style.transform = 'translateY(0)';
-                dialog.style.pointerEvents = 'auto';
-            });
+            dialog.style.opacity = '1';
+            dialog.style.transform = 'translateY(0)';
+            dialog.style.pointerEvents = 'auto';
+            
             document.getElementById('importText').focus();
         }
 
@@ -1822,16 +1835,15 @@
             
             dialog.classList.add('visible');
             dialog.style.visibility = 'visible';
-            requestAnimationFrame(() => {
-                dialog.style.opacity = '1';
-                dialog.style.transform = 'translateY(0)';
-                dialog.style.pointerEvents = 'auto';
-            });
+            dialog.style.opacity = '1';
+            dialog.style.transform = 'translateY(0)';
+            dialog.style.pointerEvents = 'auto';
+            
             document.getElementById('exportText').select();
         }
 
         // Update toggleAddAccount event listener
-        document.getElementById('toggleAddAccount').addEventListener('click', () => {
+        document.getElementById('toggleAddAccount').addEventListener('click', function() {
             const form = document.getElementById('addAccountForm');
             const btn = document.getElementById('toggleAddAccount');
             
@@ -1855,11 +1867,10 @@
                 closeAllDialogs();  // Close other dialogs first
                 form.classList.add('visible');
                 form.style.visibility = 'visible';
-                requestAnimationFrame(() => {
-                    form.style.opacity = '1';
-                    form.style.transform = 'translateY(0)';
-                    form.style.pointerEvents = 'auto';
-                });
+                form.style.opacity = '1';
+                form.style.transform = 'translateY(0)';
+                form.style.pointerEvents = 'auto';
+                
                 btn.innerHTML = '<i class="fas fa-times"></i>';
                 btn.classList.add('active');
                 document.getElementById('accountName').focus();
@@ -1984,7 +1995,7 @@
             }
         }
 
-        // Update filterAccounts function
+        // Optimize filterAccounts function
         function filterAccounts() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const container = document.getElementById('codesContainer');
@@ -1993,30 +2004,38 @@
             
             let hasVisibleDisplays = false;
             
-            displays.forEach(display => {
-                const nameElement = display.querySelector('.account-name');
-                const accountName = nameElement.textContent.toLowerCase();
-                
-                if (!searchTerm || accountName.includes(searchTerm)) {
+            if (!searchTerm) {
+                // If no search term, show all accounts
+                displays.forEach(display => {
                     display.style.display = 'flex';
                     display.style.opacity = '1';
-                    hasVisibleDisplays = true;
+                    const nameElement = display.querySelector('.account-name');
+                    nameElement.innerHTML = nameElement.textContent;
+                });
+                hasVisibleDisplays = displays.length > 0;
+            } else {
+                // If search term exists, filter accounts
+                displays.forEach(display => {
+                    const nameElement = display.querySelector('.account-name');
+                    const accountName = nameElement.textContent.toLowerCase();
                     
-                    // Highlight matching text
-                    if (searchTerm) {
-                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    if (accountName.includes(searchTerm)) {
+                        display.style.display = 'flex';
+                        display.style.opacity = '1';
+                        hasVisibleDisplays = true;
+                        
+                        // Highlight matching text
+                        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
                         nameElement.innerHTML = nameElement.textContent.replace(
                             regex,
                             '<mark>$1</mark>'
                         );
                     } else {
-                        nameElement.innerHTML = nameElement.textContent;
+                        display.style.display = 'none';
+                        display.style.opacity = '0';
                     }
-                } else {
-                    display.style.display = 'none';
-                    display.style.opacity = '0';
-                }
-            });
+                });
+            }
 
             // Update container state if no results
             if (!hasVisibleDisplays && searchTerm) {
@@ -2060,23 +2079,27 @@
             }
         });
 
-        // Update initialization section
+        // Initialize app with optimized event listeners
         document.addEventListener('DOMContentLoaded', () => {
+            // Use a single event listener for escape key
             document.addEventListener('keydown', (e) => {
-                // Only keep Escape key handling for dialogs
                 if (e.key === 'Escape') {
-                    const form = document.getElementById('addAccountForm');
-                    const importDialog = document.getElementById('importDialog');
-                    const exportDialog = document.getElementById('exportDialog');
+                    closeAllDialogs();
                     
-                    if (form.classList.contains('visible')) {
+                    // Clear search if focused and no dialogs are open
+                    const searchInput = document.getElementById('searchInput');
+                    if (document.activeElement === searchInput) {
+                        searchInput.value = '';
+                        filterAccounts();
+                        searchInput.blur();
+                    }
+                } else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                    e.preventDefault();
+                    if (!document.getElementById('addAccountForm').classList.contains('visible')) {
                         document.getElementById('toggleAddAccount').click();
-                    }
-                    if (importDialog.classList.contains('visible')) {
-                        hideImportDialog();
-                    }
-                    if (exportDialog.classList.contains('visible')) {
-                        hideExportDialog();
                     }
                 }
             });
@@ -2088,32 +2111,21 @@
             // Then set interval
             setInterval(updateTimers, 1000);
         });
-
-        // Update hide dialog functions
-        function hideImportDialog() {
-            const dialog = document.getElementById('importDialog');
-            dialog.style.opacity = '0';
-            dialog.style.transform = 'translateY(10px)';
-            dialog.style.pointerEvents = 'none';
-            dialog.style.visibility = 'hidden';
-            setTimeout(() => {
-                dialog.classList.remove('visible');
-                document.getElementById('importText').value = '';
-            }, 300);
+        
+        // Register service worker with error handling
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
         }
 
-        function hideExportDialog() {
-            const dialog = document.getElementById('exportDialog');
-            dialog.style.opacity = '0';
-            dialog.style.transform = 'translateY(10px)';
-            dialog.style.pointerEvents = 'none';
-            dialog.style.visibility = 'hidden';
-            setTimeout(() => {
-                dialog.classList.remove('visible');
-            }, 300);
-        }
-
-        // Update edit dialog functionality
+        // Fix showEditDialog function
         function showEditDialog(index) {
             const editButton = document.querySelector(`.code-display:nth-child(${index + 1}) .account-action-btn.edit`);
             
@@ -2144,14 +2156,14 @@
             
             dialog.classList.add('visible');
             dialog.style.visibility = 'visible';
-            requestAnimationFrame(() => {
-                dialog.style.opacity = '1';
-                dialog.style.transform = 'translateY(0)';
-                dialog.style.pointerEvents = 'auto';
-            });
+            dialog.style.opacity = '1';
+            dialog.style.transform = 'translateY(0)';
+            dialog.style.pointerEvents = 'auto';
+            
             document.getElementById('editAccountName').focus();
         }
 
+        // Fix hideEditDialog function
         function hideEditDialog() {
             const dialog = document.getElementById('editAccountDialog');
             const activeEditButton = document.querySelector('.account-action-btn.edit.active');
@@ -2170,181 +2182,29 @@
             }, 300);
         }
 
-        function saveEditAccount() {
-            const nameInput = document.getElementById('editAccountName');
-            const secretInput = document.getElementById('editSecretKey');
-            const name = nameInput.value.trim();
-            const secret = secretInput.value.trim();
-            
-            if (!name || !secret) {
-                showToast('Please fill in all fields', 'error');
-                return;
-            }
-
-            if (!validateAccountName(name)) {
-                if (name.length < 1 || name.length > 50) {
-                    showToast('Account name must be between 1 and 50 characters', 'error');
-                } else if (/<[^>]*>/.test(name)) {
-                    showToast('Account name cannot contain HTML tags', 'error');
-                } else if (/[\|\\\n\r]/.test(name)) {
-                    showToast('Account name cannot contain | \\ or line breaks', 'error');
-                }
-                return;
-            }
-
-            if (!validateSecretKey(secret)) {
-                showToast('Invalid secret key format', 'error');
-                return;
-            }
-
-            if (name !== accounts[editingIndex].name && accounts.some(acc => acc.name === name)) {
-                showToast('An account with this name already exists', 'error');
-                return;
-            }
-
-            accounts[editingIndex] = { name, secret };
-            saveAccounts();
-            updateAccountsDisplay();
-            updateAllCodes();
-            hideEditDialog();
-            showToast('Account updated successfully', 'success');
-        }
-
-        // Add loading states for all async operations
-        function showLoadingState(button, text) {
-            button.disabled = true;
-            button.classList.add('button-loading');
-            button.textContent = text;
-        }
-
-        function hideLoadingState(button, text) {
-            button.disabled = false;
-            button.classList.remove('button-loading');
-            button.textContent = text;
-        }
-
-        // Add toast notifications
-        function showToast(message, type = 'info', duration = 3000) {
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) {
-                existingToast.remove();
-            }
-
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.innerHTML = message;
-            document.body.appendChild(toast);
-            
-            // Force reflow
-            toast.offsetHeight;
-            
-            // Add visible class for animation
-            requestAnimationFrame(() => {
-                toast.classList.add('visible');
-            });
-
+        // Fix hideImportDialog function
+        function hideImportDialog() {
+            const dialog = document.getElementById('importDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
             setTimeout(() => {
-                toast.classList.remove('visible');
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+                dialog.classList.remove('visible');
+                document.getElementById('importText').value = '';
+            }, 300);
         }
 
-        // Add custom confirm/alert functions
-        function showConfirm(title, message, confirmText = 'Confirm', type = 'primary') {
-            return new Promise((resolve) => {
-                const dialog = document.querySelector('.confirm-dialog');
-                const overlay = document.querySelector('.confirm-dialog-overlay');
-                const confirmBtn = dialog.querySelector('.confirm');
-                const cancelBtn = dialog.querySelector('.secondary');
-                
-                dialog.querySelector('h3').textContent = title;
-                dialog.querySelector('p').textContent = message;
-                confirmBtn.textContent = confirmText;
-                confirmBtn.className = `confirm ${type}`;
-                
-                const hide = () => {
-                    dialog.classList.remove('visible');
-                    overlay.classList.remove('visible');
-                };
-                
-                const handleConfirm = () => {
-                    hide();
-                    resolve(true);
-                    cleanup();
-                };
-                
-                const handleCancel = () => {
-                    hide();
-                    resolve(false);
-                    cleanup();
-                };
-                
-                const handleKeydown = (e) => {
-                    if (e.key === 'Escape') {
-                        handleCancel();
-                    } else if (e.key === 'Enter') {
-                        handleConfirm();
-                    }
-                };
-                
-                const cleanup = () => {
-                    confirmBtn.removeEventListener('click', handleConfirm);
-                    cancelBtn.removeEventListener('click', handleCancel);
-                    document.removeEventListener('keydown', handleKeydown);
-                };
-                
-                confirmBtn.addEventListener('click', handleConfirm);
-                cancelBtn.addEventListener('click', handleCancel);
-                document.addEventListener('keydown', handleKeydown);
-                
-                dialog.classList.add('visible');
-                overlay.classList.add('visible');
-            });
-        }
-
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + / to focus search
-            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-                e.preventDefault();
-                document.getElementById('searchInput').focus();
-            }
-            
-            // Ctrl/Cmd + N to add new account
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-                e.preventDefault();
-                if (!document.getElementById('addAccountForm').classList.contains('visible')) {
-                    document.getElementById('toggleAddAccount').click();
-                }
-            }
-        });
-
-        // Update dialog show functions
-        function showDialog(dialog, focusElement) {
-            dialog.classList.add('visible');
-            dialog.style.visibility = 'visible';
-            requestAnimationFrame(() => {
-                dialog.style.opacity = '1';
-                dialog.style.transform = 'translateY(0)';
-                dialog.style.pointerEvents = 'auto';
-                if (focusElement) {
-                    focusElement.focus();
-                    focusElement.select?.();
-                }
-            });
-        }
-
-        // Register service worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
+        // Fix hideExportDialog function
+        function hideExportDialog() {
+            const dialog = document.getElementById('exportDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
+            setTimeout(() => {
+                dialog.classList.remove('visible');
+            }, 300);
         }
     </script>
 </body>
