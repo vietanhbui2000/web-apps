@@ -216,6 +216,8 @@
             flex: 1;
             min-width: 0;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 100%; /* Ensure text doesn't overflow */
+            hyphens: auto; /* Allow hyphenation for very long words */
         }
 
         .code-display:hover .account-name {
@@ -282,22 +284,31 @@
             transform: translateX(-50%) translateY(-2px);
         }
 
-        .account-action-btn.edit:hover,
-        .account-action-btn.edit.active {
+        .account-action-btn.edit:hover {
             color: #ffc107; /* Yellow color */
             background: rgba(255, 193, 7, 0.1);
         }
 
+        .account-action-btn.edit.active {
+            color: #ffc107; /* Yellow color */
+            background: rgba(255, 193, 7, 0.15); /* Darker background when active */
+            opacity: 1 !important; /* Force visibility */
+        }
+
         .account-action-btn.delete:hover,
-        .account-action-btn.delete.confirm {
+        .account-action-btn.delete.active {
             color: var(--danger-color);
             background: rgba(220, 53, 69, 0.1);
         }
 
-        .account-action-btn.delete.confirm .action-tooltip {
+        .account-action-btn.delete.active .action-tooltip {
+            opacity: 0; /* Hide tooltip by default */
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .account-action-btn.delete.active:hover .action-tooltip {
             opacity: 1;
             transform: translateX(-50%) translateY(-2px);
-            background: var(--danger-color);
         }
 
         .code-wrapper {
@@ -323,9 +334,16 @@
         }
 
         .code-wrapper.copied {
+            animation: copy-pulse 0.5s ease;
             background: rgba(0, 123, 255, 0.08);
             border-color: var(--primary-color);
-            transform: translateY(-1px);
+            transform-origin: center;
+        }
+
+        .code-wrapper.copied .copy-indicator {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+            animation: none; /* Prevent the indicator from inheriting the pulse animation */
         }
 
         .code {
@@ -621,7 +639,7 @@
             transform: translateX(-50%) translateY(-4px);
         }
 
-        /* Update copy indicator styles */
+        /* Fix the copy indicator to ensure proper visibility and animation */
         .copy-indicator {
             position: absolute;
             top: 50%;
@@ -633,14 +651,55 @@
             pointer-events: none;
             opacity: 0;
             transition: opacity var(--transition-duration) var(--transition-timing);
+            width: 100%;
+            text-align: center;
         }
 
+        /* Add back the code hide behavior when copied */
         .code-wrapper.copied .code {
             opacity: 0;
         }
 
+        /* Update animation to scale the indicator while keeping it centered */
+        @keyframes copy-indicator-pulse {
+            0% { transform: translate(-50%, -50%) scale(0.9); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
         .code-wrapper.copied .copy-indicator {
             opacity: 1;
+            animation: copy-indicator-pulse 0.5s ease;
+        }
+
+        /* Update the copyCode function to work with the animations */
+        function copyCode(index) {
+            const codeElement = document.getElementById(`code-${index}`);
+            const wrapper = document.getElementById(`code-wrapper-${index}`);
+            
+            if (!codeElement || !wrapper) return;
+            
+            // Don't copy if the code is in loading state or not available
+            if (codeElement.textContent === '------' || codeElement.classList.contains('loading')) {
+                showToast('Code not yet available', 'warning', 1500);
+                return;
+            }
+            
+            // Remove clicked class to hide tooltip during copy animation
+            wrapper.classList.remove('clicked');
+            
+            navigator.clipboard.writeText(codeElement.textContent)
+                .then(() => {
+                    wrapper.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        wrapper.classList.remove('copied');
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    showToast('Failed to copy code to clipboard', 'error');
+                });
         }
 
         /* Scrollbar styles */
@@ -889,6 +948,28 @@
             min-width: 200px;
             max-width: 90%;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid transparent;
+        }
+
+        .toast-success {
+            background: rgba(40, 167, 69, 0.95);
+            border-color: rgb(30, 126, 52);
+        }
+
+        .toast-warning {
+            background: rgba(255, 193, 7, 0.95);
+            border-color: rgb(224, 168, 0);
+            color: rgba(0, 0, 0, 0.8);
+        }
+
+        .toast-error {
+            background: rgba(220, 53, 69, 0.95);
+            border-color: rgb(200, 35, 51);
+        }
+
+        .toast-info {
+            background: rgba(0, 123, 255, 0.95);
+            border-color: rgb(0, 105, 217);
         }
 
         .toast.visible {
@@ -917,22 +998,6 @@
             transform: none;
             box-shadow: none;
             background: none;
-        }
-
-        .toast-success {
-            background: rgba(40, 167, 69, 0.95);
-        }
-
-        .toast-warning {
-            background: rgba(255, 193, 7, 0.95);
-        }
-
-        .toast-error {
-            background: rgba(220, 53, 69, 0.95);
-        }
-
-        .toast-info {
-            background: rgba(0, 123, 255, 0.95);
         }
 
         /* Add loading skeleton animation */
@@ -1053,6 +1118,25 @@
         }
 
         /* Update copy animation */
+        @keyframes copy-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .code-wrapper.copied {
+            animation: copy-pulse 0.5s ease;
+            background: rgba(0, 123, 255, 0.08);
+            border-color: var(--primary-color);
+            transform-origin: center;
+        }
+
+        .code-wrapper.copied .copy-indicator {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+            animation: none; /* Prevent the indicator from inheriting the pulse animation */
+        }
+
         .code-wrapper.copied::after {
             display: none; /* Remove the checkmark */
         }
@@ -1097,11 +1181,13 @@
                 padding: 0.75rem;
                 background: rgba(0, 0, 0, 0.02);
                 cursor: pointer;
+                border-radius: calc(var(--border-radius) - 2px);
             }
 
             .code {
                 font-size: 1.75rem;
                 letter-spacing: 2px;
+                text-align: center; /* Center code on mobile */
             }
 
             /* Remove double-click requirement on mobile */
@@ -1124,11 +1210,6 @@
             /* Hide tooltips on mobile */
             .action-tooltip {
                 display: none;
-            }
-
-            /* Adjust timer progress for mobile */
-            .timer-progress {
-                border-width: 1.5px;
             }
 
             /* Update mobile tap feedback */
@@ -1171,19 +1252,196 @@
             }
         }
 
-        .input-group input:invalid {
-            border-color: var(--danger-color);
+        /* Adjust timer progress for mobile */
+        .timer-progress {
+            border-width: 2px;
+            opacity: 0.25;
         }
 
-        .input-group .validation-message {
-            color: var(--danger-color);
-            font-size: 0.8rem;
-            margin-top: 0.25rem;
+        /* Better touch feedback for codes */
+        .code-wrapper:active {
+            background: rgba(0, 123, 255, 0.1);
+            transform: scale(0.98);
+        }
+
+        /* Add keyboard focus styles */
+        .account-action-btn:focus-visible,
+        .dialog button:focus-visible,
+        .import-export button:focus-visible,
+        button:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .account-name-container:focus-within,
+        .code-wrapper:focus-visible {
+            outline: none; /* Remove outline when focused */
+        }
+
+        /* Add keyboard helper text in footer */
+        .keyboard-shortcuts {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
             display: none;
         }
 
-        .input-group input:invalid + .validation-message {
-            display: block;
+        @media (min-width: 769px) {
+            .keyboard-shortcuts {
+                display: block;
+            }
+        }
+
+        .dialog-buttons .danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .dialog-buttons .danger:hover {
+            background-color: var(--danger-hover);
+            transform: var(--hover-transform);
+            box-shadow: var(--hover-shadow);
+        }
+
+        /* Update focus styles for account name container */
+        .account-name-container:focus-within,
+        .code-wrapper:focus-visible {
+            outline: none; /* Remove outline when focused */
+        }
+
+        /* Add hover effects directly on account name */
+        .account-name:hover {
+            /* color: var(--primary-color); */ /* Remove blue color */
+            font-weight: 600;
+            transform: scale(1.02);
+            cursor: pointer;
+        }
+
+        /* Change account name color based on which button is being hovered */
+        .account-action-btn.edit:hover ~ .account-name,
+        .code-display:has(.account-action-btn.edit:hover) .account-name {
+            color: #ffc107; /* Yellow color to match edit */
+        }
+
+        .account-action-btn.delete:hover ~ .account-name,
+        .code-display:has(.account-action-btn.delete:hover) .account-name {
+            color: var(--danger-color); /* Red color to match delete */
+        }
+
+        /* Adjust mobile styles for account name */
+        @media (max-width: 768px) {
+            .account-name:hover {
+                transform: none; /* No scaling on mobile */
+            }
+            
+            .account-name-container:focus-within {
+                outline: none; /* Ensure no outline on mobile */
+            }
+        }
+
+        .code-display.active-edit {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+            background-color: rgba(255, 193, 7, 0.03);
+        }
+
+        .code-display.active-delete {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+            background-color: rgba(220, 53, 69, 0.03);
+        }
+
+        .code-display.active-edit .account-name {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        .code-display.active-delete .account-name {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        /* Add styling for validation messages to match dialog descriptions */
+        .validation-message {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.35rem;
+            margin-bottom: 0;
+            font-style: italic;
+        }
+
+        /* When validation fails, make the message more visible */
+        input:invalid + .validation-message {
+            color: var(--danger-color);
+        }
+
+        /* Update delete button active state styles to match edit button */
+        .account-action-btn.delete.active {
+            color: var(--danger-color);
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Add specific CSS styling to ensure delete button stays visible when active */
+        .account-action-btn.delete.active {
+            /* Make the delete button more visible when active */
+            color: var(--danger-color);
+            background: rgba(220, 53, 69, 0.15);
+            opacity: 1 !important; /* Force visibility */
+        }
+
+        /* Ensure the delete button container stays visible when active */
+        .code-display.active-delete .account-actions {
+            opacity: 1 !important; /* Force visibility */
+        }
+
+        /* Make tooltip visible when delete is active */
+        .account-action-btn.delete.active .action-tooltip {
+            opacity: 0; /* Hide tooltip by default */
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Only show tooltip on hover, not when just active */
+        .account-action-btn.delete.active:hover .action-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        /* Style for the save changes button in edit dialog */
+        #editAccountDialog .dialog-buttons button:first-child {
+            background-color: #ffc107; /* Yellow color to match edit */
+            border-color: #e0a800;
+            color: #212529; /* Dark text for better contrast on yellow */
+        }
+
+        #editAccountDialog .dialog-buttons button:first-child:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+            transform: var(--hover-transform);
+            box-shadow: var(--hover-shadow);
+        }
+
+        /* Improve edit button active state to match delete button */
+        .account-action-btn.edit.active {
+            color: #ffc107; /* Yellow color */
+            background: rgba(255, 193, 7, 0.15); /* Slightly darker background when active */
+            opacity: 1 !important; /* Force visibility */
+        }
+
+        /* Ensure the edit button container stays visible when active */
+        .code-display.active-edit .account-actions {
+            opacity: 1 !important; /* Force visibility */
+        }
+
+        /* Make tooltip visible when edit is active */
+        .account-action-btn.edit.active .action-tooltip {
+            opacity: 0; /* Hide tooltip by default */
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Only show tooltip on hover, not when just active */
+        .account-action-btn.edit.active:hover .action-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-2px);
         }
     </style>
 </head>
@@ -1218,13 +1476,13 @@
             <input 
                 type="text" 
                 id="accountName" 
-                placeholder="e.g., Google, GitHub"
+                placeholder="Enter your account name"
                 autocomplete="off"
                 spellcheck="false"
                 pattern="^[^|\\\n\r<>]{1,50}$"
-                title="Name cannot contain | \ or HTML tags"
+                title="Name cannot contain | \ or HTML tags."
             >
-            <div class="validation-message">Name cannot contain | \ or HTML tags</div>
+            <div class="validation-message">Name cannot contain | \ or HTML tags.</div>
         </div>
 
         <div class="input-group">
@@ -1251,10 +1509,13 @@
                     <input 
                         type="text" 
                         id="editAccountName" 
-                        placeholder="e.g., Google, GitHub"
+                        placeholder="Enter your account name"
                         autocomplete="off"
                         spellcheck="false"
+                        pattern="^[^|\\\n\r<>]{1,50}$"
+                        title="Name cannot contain | \ or HTML tags."
                     >
+                    <div class="validation-message">Name cannot contain | \ or HTML tags.</div>
                 </div>
 
                 <div class="input-group">
@@ -1277,10 +1538,10 @@
             <div id="importDialog" class="dialog">
                 <div class="dialog-content">
                     <h2>Import Accounts</h2>
-                    <p class="dialog-description">Paste your accounts below, one per line:<br>Format: account|secretkey</p>
+                    <p class="dialog-description">Paste your accounts below, one per line:</p>
                     <textarea 
                         id="importText" 
-                        placeholder="google|JBSWY3DPEHPK3PXP&#10;github|JBSWY3DPEHPK3PXP"
+                        placeholder="account|secretkey"
                         spellcheck="false"
                     ></textarea>
                     <div class="dialog-buttons">
@@ -1305,22 +1566,23 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Add a new confirm dialog in the same style as other dialogs -->
+            <div id="confirmDialog" class="dialog">
+                <div class="dialog-content">
+                    <h2 id="confirmTitle">Confirm Action</h2>
+                    <p id="confirmMessage" class="dialog-description"></p>
+                    <div class="dialog-buttons">
+                        <button id="confirmButton" class="primary"></button>
+                        <button class="secondary" onclick="hideConfirmDialog()">Cancel</button>
+                    </div>
+                </div>
+            </div>
         </div>
     
         <div class="footer">
             <p>© 2025 <a href="https://github.com/vietanhbui2000" target="_blank" rel="noopener">Việt Anh Bùi</a>.<br>
             Built with <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> & <a href="https://www.cursor.com" target="_blank" rel="noopener">Cursor</a>.</p>
-            <p style="margin-top: 0.5rem; font-size: 0.75rem">All calculations are performed locally in your browser.</p>
-        </div>
-    </div>
-
-    <div class="confirm-dialog-overlay"></div>
-    <div class="confirm-dialog">
-        <h3></h3>
-        <p></p>
-        <div class="confirm-dialog-buttons">
-            <button class="confirm"></button>
-            <button class="secondary cancel">Cancel</button>
         </div>
     </div>
 
@@ -1412,9 +1674,24 @@
             updateAllCodes();
         }
 
-        function saveAccounts() {
+        // Add encryption support for stored secrets
+        function encryptData(data, password) {
+            if (!password) return data; // Skip encryption if no password
+            return CryptoJS.AES.encrypt(JSON.stringify(data), password).toString();
+        }
+
+        function decryptData(encryptedData, password) {
+            if (!password) return JSON.parse(encryptedData); // Handle unencrypted data
+            const bytes = CryptoJS.AES.decrypt(encryptedData, password);
+            return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+        }
+
+        // Update saveAccounts to use encryption
+        function saveAccounts(password) {
             try {
-                localStorage.setItem('totpAccounts', JSON.stringify(accounts));
+                const dataToSave = encryptData(accounts, password);
+                localStorage.setItem('totpAccounts', dataToSave);
+                localStorage.setItem('isEncrypted', !!password);
                 showToast('Changes saved', 'success', 1000);
             } catch (error) {
                 showToast('Failed to save changes', 'error');
@@ -1453,29 +1730,34 @@
             const name = nameInput.value.trim();
             const secret = secretInput.value.trim();
             
-            if (!name || !secret) {
-                showToast('Please fill in all fields', 'error');
-                return;
-            }
-
-            if (!validateAccountName(name)) {
+            // Validate inputs
+            let errorMessage = null;
+            
+            if (!name) {
+                errorMessage = 'Please enter an account name';
+                nameInput.focus();
+            } else if (!validateAccountName(name)) {
                 if (name.length < 1 || name.length > 50) {
-                    showToast('Account name must be between 1 and 50 characters', 'error');
+                    errorMessage = 'Account name must be between 1 and 50 characters';
                 } else if (/<[^>]*>/.test(name)) {
-                    showToast('Account name cannot contain HTML tags', 'error');
+                    errorMessage = 'Account name cannot contain HTML tags';
                 } else if (/[\|\\\n\r]/.test(name)) {
-                    showToast('Account name cannot contain | \\ or line breaks', 'error');
+                    errorMessage = 'Account name cannot contain | \\ or line breaks';
                 }
-                return;
+                nameInput.focus();
+            } else if (!secret) {
+                errorMessage = 'Please enter a secret key';
+                secretInput.focus();
+            } else if (!validateSecretKey(secret)) {
+                errorMessage = 'Invalid secret key format';
+                secretInput.focus();
+            } else if (accounts.some(acc => acc.name === name)) {
+                errorMessage = 'An account with this name already exists';
+                nameInput.focus();
             }
-
-            if (!validateSecretKey(secret)) {
-                showToast('Invalid secret key format', 'error');
-                return;
-            }
-
-            if (accounts.some(acc => acc.name === name)) {
-                showToast('An account with this name already exists', 'error');
+            
+            if (errorMessage) {
+                showToast(errorMessage, 'error');
                 return;
             }
 
@@ -1506,98 +1788,73 @@
             showToast('Account added successfully', 'success');
         }
 
-        // Update deleteAccount function
-        let deleteTimeout = null;
-        let deleteTarget = null;
-
+        // Improve the deleteAccount function to keep the button visible like the edit button
         function deleteAccount(index, button) {
+            const codeDisplay = button.closest('.code-display');
+            
             // If there's an active button and it's not this one, reset it
             if (activeButton && activeButton !== button) {
                 if (activeButton.classList.contains('edit')) {
                     hideEditDialog();
                 } else if (activeButton.classList.contains('delete')) {
                     resetDeleteButton(activeButton);
-                    clearTimeout(deleteTimeout);
-                    deleteTimeout = null;
-                    deleteTarget = null;
+                    hideConfirmDialog();
                 }
             }
             
+            // If this button is already active, just reset it and return
+            if (button.classList.contains('active')) {
+                resetDeleteButton(button);
+                hideConfirmDialog();
+                return;
+            }
+            
+            // Set this as the active button and add highlight classes
             activeButton = button;
-            const isMobile = window.innerWidth <= 768;
+            codeDisplay.classList.add('active-delete');
+            button.classList.add('active');
             
-            if (deleteTimeout && deleteTarget === button) {
-                // Second click/tap - proceed with deletion
-                clearTimeout(deleteTimeout);
-                deleteTimeout = null;
-                deleteTarget = null;
-                
-                const currentCodes = accounts.map((_, i) => {
-                    const codeElement = document.getElementById(`code-${i}`);
-                    return codeElement ? codeElement.textContent : null;
-                });
-                
-                const deletedAccount = accounts[index];
-                deletedAccounts.push({ account: deletedAccount, index });
-                
-                accounts.splice(index, 1);
-                saveAccounts();
-                updateAccountsDisplay();
-                
-                requestAnimationFrame(() => {
-                    accounts.forEach((_, i) => {
-                        const codeElement = document.getElementById(`code-${i}`);
-                        if (codeElement && i < currentCodes.length && i !== index) {
-                            codeElement.textContent = currentCodes[i] || generateTOTP(accounts[i].secret);
-                        }
+            // Show the confirm dialog
+            showConfirm(
+                'Delete Account',
+                `Are you sure you want to delete "${accounts[index].name}"?`,
+                'Delete'
+            ).then(confirmed => {
+                if (confirmed) {
+                    const deletedAccount = accounts[index];
+                    deletedAccounts.push({ account: deletedAccount, index });
+                    
+                    accounts.splice(index, 1);
+                    saveAccounts();
+                    updateAccountsDisplay();
+                    
+                    requestAnimationFrame(() => {
+                        updateAllCodes();
                     });
-                });
-                
-                showToast(
-                    `Account deleted. <button onclick="undoDelete()">Undo</button>`,
-                    'info',
-                    5000
-                );
-                
-                // Reset active button after deletion
-                activeButton = null;
-            } else {
-                // First click/tap - show confirmation state
-                if (deleteTimeout) {
-                    clearTimeout(deleteTimeout);
-                    resetDeleteButton(deleteTarget);
+                    
+                    showToast(
+                        `Account deleted. <button onclick="undoDelete()">Undo</button>`,
+                        'info',
+                        5000
+                    );
                 }
                 
-                button.classList.add('confirm');
-                button.querySelector('.action-tooltip').textContent = 'Click again to delete';
-                deleteTarget = button;
-                
-                if (!isMobile) {
-                    // Only add mouse leave handler on desktop
-                    const handleMouseLeave = () => {
-                        button.removeEventListener('mouseleave', handleMouseLeave);
-                        clearTimeout(deleteTimeout);
-                        resetDeleteButton(button);
-                        deleteTimeout = null;
-                        deleteTarget = null;
-                    };
-                    button.addEventListener('mouseleave', handleMouseLeave);
-                }
-                
-                // Set timeout for confirmation state
-                deleteTimeout = setTimeout(() => {
-                    resetDeleteButton(button);
-                    deleteTimeout = null;
-                    deleteTarget = null;
-                }, 3000);
-            }
+                // Reset the button state after confirmation dialog closes
+                resetDeleteButton(button);
+            });
         }
 
-        // Helper function to reset delete button state
+        // Update resetDeleteButton function to just reset the state without changing tooltip
         function resetDeleteButton(button) {
             if (button) {
-                button.classList.remove('confirm');
-                button.querySelector('.action-tooltip').textContent = tooltipTexts.delete;
+                button.classList.remove('active');
+                
+                // Remove active-delete class from parent code display
+                const codeDisplay = button.closest('.code-display');
+                if (codeDisplay) {
+                    codeDisplay.classList.remove('active-delete');
+                }
+                
                 activeButton = null; // Reset active button
             }
         }
@@ -1637,24 +1894,25 @@
                 const account = accounts[index];
                 html += `
                     <div class="code-display">
-                        <div class="timer-progress" id="timer-progress-${index}"></div>
+                        <div class="timer-progress" id="timer-progress-${index}" aria-hidden="true"></div>
                         <div class="account-name-container">
-                            <div class="account-name">${account.name}</div>
-                            <div class="account-actions">
-                                <button class="account-action-btn edit" onclick="showEditDialog(${index})">
-                                    <i class="fas fa-pencil-alt"></i>
+                            <div class="account-name" tabindex="0" aria-label="Account: ${account.name}">${account.name}</div>
+                            <div class="account-actions" role="group" aria-label="Account actions">
+                                <button class="account-action-btn edit" onclick="showEditDialog(${index})" aria-label="Edit ${account.name}">
+                                    <i class="fas fa-pencil-alt" aria-hidden="true"></i>
                                     <span class="action-tooltip">${tooltipTexts.edit}</span>
                                 </button>
-                                <button class="account-action-btn delete" onclick="deleteAccount(${index}, this)">
-                                    <i class="fas fa-trash-alt"></i>
+                                <button class="account-action-btn delete" onclick="deleteAccount(${index}, this)" aria-label="Delete ${account.name}">
+                                    <i class="fas fa-trash-alt" aria-hidden="true"></i>
                                     <span class="action-tooltip">${tooltipTexts.delete}</span>
                                 </button>
                             </div>
                         </div>
-                        <div class="code-wrapper" id="code-wrapper-${index}">
-                            <div class="code" id="code-${index}">------</div>
-                            <div class="copy-indicator">Copied!</div>
-                            <span class="tooltip">${tooltipTexts.copy}</span>
+                        <div class="code-wrapper" id="code-wrapper-${index}" tabindex="0" 
+                             role="button" aria-label="TOTP code for ${account.name}. Double-click to copy.">
+                            <div class="code" id="code-${index}" aria-live="polite">------</div>
+                            <div class="copy-indicator" aria-hidden="true">Copied!</div>
+                            <span class="tooltip" aria-hidden="true">${tooltipTexts.copy}</span>
                         </div>
                     </div>
                 `;
@@ -1691,8 +1949,44 @@
             }
         }
 
-        // Optimize closeAllDialogs function to reduce code duplication
-        function closeAllDialogs() {
+        // Fix the showEditDialog function to properly handle the case when delete is active
+        function showEditDialog(index) {
+            closeAllDialogs(false); // Close all dialogs including confirm dialog
+            
+            const editButton = document.querySelector(`.code-display:nth-child(${index + 1}) .account-action-btn.edit`);
+            const codeDisplay = document.querySelector(`.code-display:nth-child(${index + 1})`);
+            
+            // If this button is already active, just reset it and return
+            if (editButton.classList.contains('active')) {
+                hideEditDialog();
+                return;
+            }
+            
+            // Set new active button
+            activeButton = editButton;
+            editingIndex = index;
+            
+            // Add active-edit class to the code display
+            codeDisplay.classList.add('active-edit');
+            editButton.classList.add('active');
+            
+            const account = accounts[index];
+            const dialog = document.getElementById('editAccountDialog');
+            
+            document.getElementById('editAccountName').value = account.name;
+            document.getElementById('editSecretKey').value = account.secret;
+            
+            dialog.classList.add('visible');
+            dialog.style.visibility = 'visible';
+            dialog.style.opacity = '1';
+            dialog.style.transform = 'translateY(0)';
+            dialog.style.pointerEvents = 'auto';
+            
+            document.getElementById('editAccountName').focus();
+        }
+
+        // Fix the closeAllDialogs function to properly close all dialogs
+        function closeAllDialogs(preserveActiveButton = false) {
             const dialogs = [
                 {
                     element: document.getElementById('addAccountForm'),
@@ -1702,45 +1996,43 @@
                         toggleBtn.classList.remove('active');
                     }
                 },
-                { element: document.getElementById('importDialog'), cleanupFn: hideImportDialog },
-                { element: document.getElementById('exportDialog'), cleanupFn: hideExportDialog },
-                { element: document.getElementById('editAccountDialog'), cleanupFn: hideEditDialog }
+                { element: document.getElementById('importDialog') },
+                { element: document.getElementById('exportDialog') },
+                { element: document.getElementById('editAccountDialog') },
+                { element: document.getElementById('confirmDialog') }
             ];
 
             // Close any open dialog
             for (const dialog of dialogs) {
                 if (dialog.element && dialog.element.classList.contains('visible')) {
-                    if (dialog.cleanupFn) {
-                        dialog.cleanupFn();
-                    } else {
-                        dialog.element.style.opacity = '0';
-                        dialog.element.style.transform = 'translateY(10px)';
-                        dialog.element.style.pointerEvents = 'none';
-                        dialog.element.style.visibility = 'hidden';
-                        
-                        if (dialog.extraCleanup) dialog.extraCleanup();
-                        
-                        setTimeout(() => {
-                            dialog.element.classList.remove('visible');
-                        }, 300);
-                    }
+                    dialog.element.style.opacity = '0';
+                    dialog.element.style.transform = 'translateY(10px)';
+                    dialog.element.style.pointerEvents = 'none';
+                    dialog.element.style.visibility = 'hidden';
+                    
+                    if (dialog.extraCleanup) dialog.extraCleanup();
+                    
+                    setTimeout(() => {
+                        dialog.element.classList.remove('visible');
+                    }, 300);
                 }
             }
 
-            // Reset any active delete button
-            if (activeButton && activeButton.classList.contains('delete')) {
-                resetDeleteButton(activeButton);
-                clearTimeout(deleteTimeout);
-                deleteTimeout = null;
-                deleteTarget = null;
+            if (!preserveActiveButton) {
+                // Reset any active buttons
+                if (activeButton) {
+                    if (activeButton.classList.contains('delete')) {
+                        resetDeleteButton(activeButton);
+                    } else if (activeButton.classList.contains('edit')) {
+                        activeButton.classList.remove('active');
+                        const codeDisplay = activeButton.closest('.code-display');
+                        if (codeDisplay) {
+                            codeDisplay.classList.remove('active-edit');
+                        }
+                    }
+                    activeButton = null;
+                }
             }
-            
-            // Reset any active edit button
-            if (activeButton && activeButton.classList.contains('edit')) {
-                activeButton.classList.remove('active');
-            }
-            
-            activeButton = null;
         }
 
         // Optimize updateTimers to reduce DOM operations
@@ -1775,12 +2067,19 @@
             
             if (!codeElement || !wrapper) return;
             
+            // Don't copy if the code is in loading state or not available
+            if (codeElement.textContent === '------' || codeElement.classList.contains('loading')) {
+                showToast('Code not yet available', 'warning', 1500);
+                return;
+            }
+            
             // Remove clicked class to hide tooltip during copy animation
             wrapper.classList.remove('clicked');
             
             navigator.clipboard.writeText(codeElement.textContent)
                 .then(() => {
                     wrapper.classList.add('copied');
+                    
                     setTimeout(() => {
                         wrapper.classList.remove('copied');
                     }, 1000);
@@ -2165,51 +2464,19 @@
             });
         }
 
-        // Fix showEditDialog function
-        function showEditDialog(index) {
-            const editButton = document.querySelector(`.code-display:nth-child(${index + 1}) .account-action-btn.edit`);
-            
-            // If there's an active button and it's not this one, reset it
-            if (activeButton && activeButton !== editButton) {
-                if (activeButton.classList.contains('delete')) {
-                    resetDeleteButton(activeButton);
-                    clearTimeout(deleteTimeout);
-                    deleteTimeout = null;
-                    deleteTarget = null;
-                } else if (activeButton.classList.contains('edit')) {
-                    hideEditDialog();
-                }
-            }
-            
-            // Call closeAllDialogs before setting new active button
-            closeAllDialogs();
-            activeButton = editButton;
-            editingIndex = index;
-            
-            const account = accounts[index];
-            const dialog = document.getElementById('editAccountDialog');
-            
-            editButton.classList.add('active');
-            
-            document.getElementById('editAccountName').value = account.name;
-            document.getElementById('editSecretKey').value = account.secret;
-            
-            dialog.classList.add('visible');
-            dialog.style.visibility = 'visible';
-            dialog.style.opacity = '1';
-            dialog.style.transform = 'translateY(0)';
-            dialog.style.pointerEvents = 'auto';
-            
-            document.getElementById('editAccountName').focus();
-        }
-
-        // Fix hideEditDialog function
+        // Update hideEditDialog function
         function hideEditDialog() {
             const dialog = document.getElementById('editAccountDialog');
             const activeEditButton = document.querySelector('.account-action-btn.edit.active');
             if (activeEditButton) {
                 activeEditButton.classList.remove('active');
             }
+            
+            // Remove active-edit class from any code display
+            document.querySelectorAll('.code-display.active-edit').forEach(el => {
+                el.classList.remove('active-edit');
+            });
+            
             activeButton = null; // Reset active button
             
             dialog.style.opacity = '0';
@@ -2222,7 +2489,7 @@
             }, 300);
         }
 
-        // Fix hideImportDialog function
+        // Update hideImportDialog function
         function hideImportDialog() {
             const dialog = document.getElementById('importDialog');
             dialog.style.opacity = '0';
@@ -2235,7 +2502,7 @@
             }, 300);
         }
 
-        // Fix hideExportDialog function
+        // Update hideExportDialog function
         function hideExportDialog() {
             const dialog = document.getElementById('exportDialog');
             dialog.style.opacity = '0';
@@ -2245,6 +2512,233 @@
             setTimeout(() => {
                 dialog.classList.remove('visible');
             }, 300);
+        }
+
+        // Fix event dialog functionality - add missing saveEditAccount function
+        function saveEditAccount() {
+            const nameInput = document.getElementById('editAccountName');
+            const secretInput = document.getElementById('editSecretKey');
+            const name = nameInput.value.trim();
+            const secret = secretInput.value.trim();
+            
+            // Validate inputs
+            let errorMessage = null;
+            
+            if (!name) {
+                errorMessage = 'Please enter an account name';
+                nameInput.focus();
+            } else if (!validateAccountName(name)) {
+                if (name.length < 1 || name.length > 50) {
+                    errorMessage = 'Account name must be between 1 and 50 characters';
+                } else if (/<[^>]*>/.test(name)) {
+                    errorMessage = 'Account name cannot contain HTML tags';
+                } else if (/[\|\\\n\r]/.test(name)) {
+                    errorMessage = 'Account name cannot contain | \\ or line breaks';
+                }
+                nameInput.focus();
+            } else if (!secret) {
+                errorMessage = 'Please enter a secret key';
+                secretInput.focus();
+            } else if (!validateSecretKey(secret)) {
+                errorMessage = 'Invalid secret key format';
+                secretInput.focus();
+            } else if (name !== accounts[editingIndex].name && 
+                accounts.some(acc => acc.name === name)) {
+                errorMessage = 'An account with this name already exists';
+                nameInput.focus();
+            }
+            
+            if (errorMessage) {
+                showToast(errorMessage, 'error');
+                return;
+            }
+
+            // Update the account
+            accounts[editingIndex] = { name, secret };
+            saveAccounts();
+            updateAccountsDisplay();
+            updateAllCodes();
+            hideEditDialog();
+            
+            showToast('Account updated successfully', 'success');
+        }
+
+        // Add missing showToast function
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = message;
+            
+            // Remove any existing toasts
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            document.body.appendChild(toast);
+            
+            // Force reflow
+            void toast.offsetHeight;
+            
+            // Show toast
+            requestAnimationFrame(() => {
+                toast.classList.add('visible');
+            });
+            
+            // Auto-hide after duration
+            const timeout = setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+            
+            // Allow clicking to dismiss
+            toast.addEventListener('click', () => {
+                clearTimeout(timeout);
+                toast.classList.remove('visible');
+                setTimeout(() => toast.remove(), 300);
+            });
+        }
+
+        // Add missing showLoadingState and hideLoadingState functions
+        function showLoadingState(button, loadingText) {
+            button.classList.add('button-loading');
+            button.dataset.originalText = button.textContent;
+            button.textContent = loadingText || 'Loading...';
+            button.disabled = true;
+        }
+
+        function hideLoadingState(button, newText) {
+            button.classList.remove('button-loading');
+            button.textContent = newText || button.dataset.originalText;
+            button.disabled = false;
+        }
+
+        // Update showConfirm to handle dialog state better
+        function showConfirm(title, message, confirmText = 'Confirm') {
+            return new Promise(resolve => {
+                // Close other dialogs but preserve our active button state
+                closeAllDialogs(true);
+                
+                const dialog = document.getElementById('confirmDialog');
+                const titleElement = document.getElementById('confirmTitle');
+                const messageElement = document.getElementById('confirmMessage');
+                const confirmButton = document.getElementById('confirmButton');
+                
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                confirmButton.textContent = confirmText;
+                
+                if (title.includes('Delete')) {
+                    confirmButton.classList.add('danger');
+                } else {
+                    confirmButton.classList.remove('danger');
+                }
+                
+                // Remove existing click handlers
+                const oldButton = confirmButton.cloneNode(true);
+                confirmButton.parentNode.replaceChild(oldButton, confirmButton);
+                document.getElementById('confirmButton').addEventListener('click', () => {
+                    hideConfirmDialog();
+                    resolve(true);
+                });
+                
+                // Show this dialog
+                dialog.classList.add('visible');
+                dialog.style.visibility = 'visible';
+                dialog.style.opacity = '1';
+                dialog.style.transform = 'translateY(0)';
+                dialog.style.pointerEvents = 'auto';
+                
+                // Add ESC key handler
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('keydown', handleKeyDown);
+                        hideConfirmDialog();
+                        resolve(false);
+                    } else if (e.key === 'Enter') {
+                        document.removeEventListener('keydown', handleKeyDown);
+                        hideConfirmDialog();
+                        resolve(true);
+                    }
+                };
+                
+                document.addEventListener('keydown', handleKeyDown);
+            });
+        }
+        
+        // Update hideConfirmDialog to properly clear all styling
+        function hideConfirmDialog() {
+            const dialog = document.getElementById('confirmDialog');
+            dialog.style.opacity = '0';
+            dialog.style.transform = 'translateY(10px)';
+            dialog.style.pointerEvents = 'none';
+            dialog.style.visibility = 'hidden';
+            
+            // Clean up any existing highlight classes
+            document.querySelectorAll('.code-display.active-delete').forEach(el => {
+                el.classList.remove('active-delete');
+            });
+            
+            document.querySelectorAll('.account-action-btn.delete.active').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            setTimeout(() => {
+                dialog.classList.remove('visible');
+            }, 300);
+        }
+
+        // Add TOTP URI parsing support
+        function parseTotpUri(uri) {
+            try {
+                if (!uri.startsWith('otpauth://totp/')) {
+                    return null;
+                }
+                
+                const url = new URL(uri);
+                const label = decodeURIComponent(url.pathname.substring(6));
+                const params = url.searchParams;
+                const secret = params.get('secret');
+                
+                if (!secret) return null;
+                
+                // Extract account name from label (Format: label or issuer:account)
+                let accountName = label;
+                if (label.includes(':')) {
+                    const parts = label.split(':');
+                    accountName = parts[1].trim();
+                    // Use issuer as a prefix if available
+                    const issuer = parts[0].trim() || params.get('issuer');
+                    if (issuer) {
+                        accountName = `${issuer}: ${accountName}`;
+                    }
+                }
+                
+                return { name: accountName, secret: secret };
+            } catch (e) {
+                console.error('Failed to parse TOTP URI:', e);
+                return null;
+            }
+        }
+
+        // Improve error dialog for multiple errors
+        function showErrorDialog(title, errors) {
+            const dialog = document.createElement('div');
+            dialog.className = 'confirm-dialog';
+            dialog.innerHTML = `
+                <h3>${title}</h3>
+                <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
+                    <ul style="padding-left: 1.5rem; color: var(--text-secondary);">
+                        ${errors.map(err => `<li>${err}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="confirm-dialog-buttons">
+                    <button onclick="this.closest('.confirm-dialog').remove()">Close</button>
+                </div>
+            `;
+            
+            document.body.appendChild(dialog);
+            setTimeout(() => dialog.classList.add('visible'), 10);
         }
     </script>
 </body>
