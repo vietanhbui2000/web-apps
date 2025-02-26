@@ -1669,39 +1669,15 @@
         // Local storage operations
         function loadAccounts() {
             const saved = localStorage.getItem('totpAccounts');
-            try {
-                // Check if data is encrypted
-                const isEncrypted = localStorage.getItem('isEncrypted') === 'true';
-                
-                if (!saved) {
-                    accounts = [];
-                    return;
-                }
-                
-                if (isEncrypted) {
-                    // If encrypted but no password provided yet, show empty state
-                    // You might want to add a password prompt here
-                    accounts = [];
-                    showToast('Encrypted accounts found. Password required.', 'warning');
-                } else {
-                    // Handle unencrypted data
-                    accounts = JSON.parse(saved);
-                }
-            } catch (error) {
-                console.error('Error loading accounts:', error);
-                accounts = [];
-                showToast('Failed to load accounts', 'error');
-            }
+            accounts = saved ? JSON.parse(saved) : [];
             updateAccountsDisplay();
             updateAllCodes();
         }
 
-        // Update saveAccounts to handle both encrypted and unencrypted data
+        // Save accounts to localStorage
         function saveAccounts() {
             try {
-                // For now, save unencrypted until we implement proper encryption UI
                 localStorage.setItem('totpAccounts', JSON.stringify(accounts));
-                localStorage.setItem('isEncrypted', 'false');
                 showToast('Changes saved', 'success', 1000);
             } catch (error) {
                 showToast('Failed to save changes', 'error');
