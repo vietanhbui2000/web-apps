@@ -672,36 +672,6 @@
             animation: copy-indicator-pulse 0.5s ease;
         }
 
-        /* Update the copyCode function to work with the animations */
-        function copyCode(index) {
-            const codeElement = document.getElementById(`code-${index}`);
-            const wrapper = document.getElementById(`code-wrapper-${index}`);
-            
-            if (!codeElement || !wrapper) return;
-            
-            // Don't copy if the code is in loading state or not available
-            if (codeElement.textContent === '------' || codeElement.classList.contains('loading')) {
-                showToast('Code not yet available', 'warning', 1500);
-                return;
-            }
-            
-            // Remove clicked class to hide tooltip during copy animation
-            wrapper.classList.remove('clicked');
-            
-            navigator.clipboard.writeText(codeElement.textContent)
-                .then(() => {
-                    wrapper.classList.add('copied');
-                    
-                    setTimeout(() => {
-                        wrapper.classList.remove('copied');
-                    }, 1000);
-                })
-                .catch(err => {
-                    console.error('Failed to copy:', err);
-                    showToast('Failed to copy code to clipboard', 'error');
-                });
-        }
-
         /* Scrollbar styles */
         @media screen and (min-width: 768px) {
             .codes-container {
@@ -1541,7 +1511,7 @@
                     <p class="dialog-description">Paste your accounts below, one per line:</p>
                     <textarea 
                         id="importText" 
-                        placeholder="account|secretkey"
+                        placeholder="account name|secret key"
                         spellcheck="false"
                     ></textarea>
                     <div class="dialog-buttons">
