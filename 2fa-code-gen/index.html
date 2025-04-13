@@ -1087,7 +1087,7 @@
             border-radius: 4px;
         }
 
-        /* Update copy animation */
+        /* Update copy animation - KEEPING ONLY THIS ONE DEFINITION */
         @keyframes copy-pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -1579,11 +1579,17 @@
         // Base32 decode function
         function base32ToHex(base32) {
             let bits = '';
-            base32 = base32.toUpperCase().replace(/[^A-Z2-7]/g, '');
+            // Clean input by removing spaces and converting to uppercase
+            base32 = base32.replace(/\s+/g, '').toUpperCase().replace(/[^A-Z2-7]/g, '');
+            
+            // Return empty if input is too short or invalid after cleaning
+            if (base32.length < 8) {
+                return '';
+            }
             
             for (let i = 0; i < base32.length; i++) {
                 const val = BASE32_CHARS.indexOf(base32[i]);
-                if (val === -1) return ''; // Return empty string instead of throwing error
+                if (val === -1) return ''; // Return empty string for invalid characters
                 bits += val.toString(2).padStart(5, '0');
             }
 
@@ -1602,6 +1608,13 @@
         // Generate TOTP code
         function generateTOTP(secret) {
             try {
+                // Check if CryptoJS is available
+                if (typeof CryptoJS === 'undefined') {
+                    console.error('CryptoJS library not loaded');
+                    showToast('Error: Cryptography library failed to load', 'error');
+                    return '------';
+                }
+                
                 // Get current time period
                 const epoch = Math.floor(Date.now() / 1000);
                 const time = Math.floor(epoch / TOTP_INTERVAL);
@@ -2016,7 +2029,7 @@
             }
         }
 
-        // Optimize copyCode function
+        // Improve copyCode function for better mobile compatibility
         function copyCode(index) {
             const codeElement = document.getElementById(`code-${index}`);
             const wrapper = document.getElementById(`code-wrapper-${index}`);
@@ -2032,21 +2045,59 @@
             // Remove clicked class to hide tooltip during copy animation
             wrapper.classList.remove('clicked');
             
-            navigator.clipboard.writeText(codeElement.textContent)
-                .then(() => {
+            // Try to use clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(codeElement.textContent)
+                    .then(() => {
+                        wrapper.classList.add('copied');
+                        
+                        setTimeout(() => {
+                            wrapper.classList.remove('copied');
+                        }, 1000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy:', err);
+                        
+                        // Fallback for mobile devices that may block clipboard API
+                        fallbackCopy(codeElement.textContent, wrapper);
+                    });
+            } else {
+                // Fallback for browsers without clipboard API
+                fallbackCopy(codeElement.textContent, wrapper);
+            }
+        }
+        
+        // Fallback copy function for mobile devices
+        function fallbackCopy(text, wrapper) {
+            try {
+                // Create temporary textarea element
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';  // Avoid scrolling to bottom
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                // Execute copy command
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
                     wrapper.classList.add('copied');
-                    
                     setTimeout(() => {
                         wrapper.classList.remove('copied');
                     }, 1000);
-                })
-                .catch(err => {
-                    console.error('Failed to copy:', err);
+                } else {
                     showToast('Failed to copy code to clipboard', 'error');
-                });
+                }
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                showToast('Failed to copy code to clipboard', 'error');
+            }
         }
 
-        // Optimize attachCodeCopyEvents to use passive listeners for better performance
+        // Fix attachCodeCopyEvents to properly handle mobile copying
         function attachCodeCopyEvents(index) {
             const wrapper = document.getElementById(`code-wrapper-${index}`);
             const isMobile = window.innerWidth <= 768;
@@ -2057,18 +2108,7 @@
             let justCopied = false;
             let singleClickTimer = null;
             
-            // Remove previous listeners (if any)
-            wrapper.removeEventListener('click', handleClick);
-            wrapper.removeEventListener('dblclick', handleDblClick);
-            
-            // Add click handler to show tooltip
-            wrapper.addEventListener('click', handleClick, { passive: true });
-            
-            // Add double-click handler to copy code
-            if (!isMobile) {
-                wrapper.addEventListener('dblclick', handleDblClick, { passive: true });
-            }
-            
+            // Define handlers as named functions to be able to remove them properly
             function handleClick(e) {
                 if (isMobile) {
                     copyCode(index);
@@ -2107,6 +2147,18 @@
                 setTimeout(() => {
                     justCopied = false;
                 }, 1000);
+            }
+            
+            // Remove existing event listeners
+            wrapper.removeEventListener('click', handleClick);
+            wrapper.removeEventListener('dblclick', handleDblClick);
+            
+            // Add event listeners directly to the wrapper
+            if (isMobile) {
+                wrapper.addEventListener('click', handleClick, { passive: true });
+            } else {
+                wrapper.addEventListener('click', handleClick, { passive: true });
+                wrapper.addEventListener('dblclick', handleDblClick, { passive: true });
             }
         }
 
@@ -2236,14 +2288,57 @@
                 }
 
                 const lines = text.split('\n').filter(line => line.trim());
-                let imported = 0;
                 let errors = [];
                 let accountsToImport = [];
                 
                 lines.forEach((line, index) => {
+                    // Check if this is a TOTP URI
+                    if (line.startsWith('otpauth://totp/')) {
+                        const parsedAccount = parseTotpUri(line);
+                        if (!parsedAccount) {
+                            errors.push(`Line ${index + 1}: Invalid TOTP URI format`);
+                            return;
+                        }
+                        
+                        const { name, secret } = parsedAccount;
+                        
+                        // Continue with validation
+                        if (!validateAccountName(name)) {
+                            errors.push(`Line ${index + 1}: Invalid account name from URI: "${name}"`);
+                            return;
+                        }
+                        
+                        if (!validateSecretKey(secret)) {
+                            errors.push(`Line ${index + 1}: Invalid secret key from URI for "${name}"`);
+                            return;
+                        }
+                        
+                        // Check for duplicate account names
+                        if (accounts.some(acc => acc.name === name)) {
+                            errors.push(`Line ${index + 1}: Account "${name}" already exists`);
+                            return;
+                        }
+                        
+                        // Check for duplicate secret keys
+                        if (accounts.some(acc => acc.secret === secret)) {
+                            errors.push(`Line ${index + 1}: Secret key for "${name}" already exists with another account name`);
+                            return;
+                        }
+                        
+                        // Check for duplicate secrets within the import batch
+                        if (accountsToImport.some(acc => acc.secret === secret)) {
+                            errors.push(`Line ${index + 1}: Duplicate secret key found in import data for "${name}"`);
+                            return;
+                        }
+                        
+                        accountsToImport.push({ name, secret });
+                        return;
+                    }
+                    
+                    // Handle standard name|secret format
                     const [name, secret] = line.split('|').map(s => s.trim());
                     if (!name || !secret) {
-                        errors.push(`Line ${index + 1}: Invalid format. Expected "name|secret"`);
+                        errors.push(`Line ${index + 1}: Invalid format. Expected "name|secret" or otpauth:// URI`);
                         return;
                     }
                     
@@ -2263,8 +2358,21 @@
                         return;
                     }
 
+                    // Check for duplicate account names
                     if (accounts.some(acc => acc.name === name)) {
                         errors.push(`Line ${index + 1}: Account "${name}" already exists`);
+                        return;
+                    }
+                    
+                    // Check for duplicate secret keys
+                    if (accounts.some(acc => acc.secret === secret)) {
+                        errors.push(`Line ${index + 1}: Secret key for "${name}" already exists with another account name`);
+                        return;
+                    }
+
+                    // Check for duplicate secrets within the import batch
+                    if (accountsToImport.some(acc => acc.secret === secret)) {
+                        errors.push(`Line ${index + 1}: Duplicate secret key found in import data for "${name}"`);
                         return;
                     }
 
@@ -2470,7 +2578,7 @@
             }, 300);
         }
 
-        // Fix event dialog functionality - add missing saveEditAccount function
+        // Update event dialog functionality - add missing saveEditAccount function
         function saveEditAccount() {
             const nameInput = document.getElementById('editAccountName');
             const secretInput = document.getElementById('editSecretKey');
@@ -2509,11 +2617,18 @@
                 return;
             }
 
+            // Get save button and show loading state
+            const saveButton = document.querySelector('#editAccountDialog .dialog-buttons button:first-child');
+            showLoadingState(saveButton, 'Saving...');
+
             // Update the account
             accounts[editingIndex] = { name, secret };
             saveAccounts();
             updateAccountsDisplay();
             updateAllCodes();
+            
+            // Hide dialog and restore button state
+            hideLoadingState(saveButton, 'Save Changes');
             hideEditDialog();
             
             showToast('Account updated successfully', 'success');
@@ -2644,7 +2759,7 @@
             }, 300);
         }
 
-        // Add TOTP URI parsing support
+        // Add TOTP URI parsing support - integrate with import functionality
         function parseTotpUri(uri) {
             try {
                 if (!uri.startsWith('otpauth://totp/')) {
@@ -2675,26 +2790,6 @@
                 console.error('Failed to parse TOTP URI:', e);
                 return null;
             }
-        }
-
-        // Improve error dialog for multiple errors
-        function showErrorDialog(title, errors) {
-            const dialog = document.createElement('div');
-            dialog.className = 'confirm-dialog';
-            dialog.innerHTML = `
-                <h3>${title}</h3>
-                <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
-                    <ul style="padding-left: 1.5rem; color: var(--text-secondary);">
-                        ${errors.map(err => `<li>${err}</li>`).join('')}
-                    </ul>
-                </div>
-                <div class="confirm-dialog-buttons">
-                    <button onclick="this.closest('.confirm-dialog').remove()">Close</button>
-                </div>
-            `;
-            
-            document.body.appendChild(dialog);
-            setTimeout(() => dialog.classList.add('visible'), 10);
         }
     </script>
 </body>

@@ -48,15 +48,34 @@ self.addEventListener('fetch', (event) => {
                             return response;
                         }
                         
+                        // Don't cache error responses
+                        if (!response || response.status !== 200) {
+                            return response;
+                        }
+                        
                         // Clone the response as it can only be consumed once
                         const responseToCache = response.clone();
                         
                         caches.open(CACHE_NAME)
                             .then((cache) => {
-                                cache.put(event.request, responseToCache);
-                            });
+                                cache.put(event.request, responseToCache)
+                                    .catch(err => {
+                                        console.error('Cache put error:', err);
+                                    });
+                            })
                             
                         return response;
+                    })
+                    .catch(error => {
+                        // Respond with a custom offline page or fallback
+                        console.error('Fetch error:', error);
+                        return new Response('Network error. Please check your connection.', {
+                            status: 503,
+                            statusText: 'Service Unavailable',
+                            headers: new Headers({
+                                'Content-Type': 'text/plain'
+                            })
+                        });
                     });
             })
     );
