@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="An infinite blank page to write everything in your browser. Built with Claude & Cursor.">
     <title>Blank Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -151,6 +152,7 @@
         
         .icon {
             display: none;
+            font-size: 16px;
         }
         
         .icon.active {
@@ -215,46 +217,21 @@
                 
                 <!-- Spellcheck Toggle Button -->
                 <button id="spellcheckToggle" class="header-button" title="Check spelling?">
-                    <svg class="icon active" id="spellcheckOnIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2"></line>
-                    </svg>
-                    <svg class="icon" id="spellcheckOffIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
-                    </svg>
+                    <i class="icon active fa-regular fa-circle-check" id="spellcheckOnIcon"></i>
+                    <i class="icon fa-regular fa-circle-dot" id="spellcheckOffIcon"></i>
                 </button>
                 
                 <!-- Display Mode Toggle Button -->
                 <button id="displayModeToggle" class="header-button" title="Display mode">
-                    <svg class="icon active" id="lightModeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <svg class="icon" id="darkModeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <svg class="icon" id="autoModeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="2" x2="12" y2="22"></line>
-                    </svg>
+                    <i class="icon active fa-regular fa-face-smile-wink" id="autoModeIcon"></i>
+                    <i class="icon fa-regular fa-sun" id="lightModeIcon"></i>
+                    <i class="icon fa-regular fa-moon" id="darkModeIcon"></i>
                 </button>
                 
                 <!-- Screen Mode Toggle Button (renamed from "displayToggle") -->
                 <button id="screenModeToggle" class="header-button" title="Screen mode">
-                    <svg class="icon" id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    </svg>
-                    <svg class="icon" id="centeredIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
+                    <i class="icon active fa-regular fa-square-minus" id="centeredIcon"></i>
+                    <i class="icon fa-regular fa-square-plus" id="fullscreenIcon"></i>
                 </button>
             </div>
         </div>
@@ -273,7 +250,7 @@
         
         let saveTimeout;
         let countMode = 'characters'; // 'characters' or 'words'
-        let displayMode = 'light'; // 'light', 'dark', or 'auto'
+        let displayMode = 'auto'; // 'light', 'dark', or 'auto'
 
         // Load content from localStorage
         function loadContent() {
@@ -434,7 +411,7 @@
             applyDisplayMode();
             
             // Load screen mode preference
-            const savedScreenMode = localStorage.getItem(SCREEN_MODE_KEY);
+            const savedScreenMode = localStorage.getItem(SCREEN_MODE_KEY) || 'centered';
             if (savedScreenMode === 'centered') {
                 document.body.classList.add('centered');
                 document.getElementById('centeredIcon').classList.add('active');
