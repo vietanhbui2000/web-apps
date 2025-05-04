@@ -134,6 +134,29 @@
             background-color: #f0f0f0;
         }
         
+        .count-display.highlighted {
+            background-color: #e0f0ff;
+            color: #0066cc;
+            font-weight: 500;
+        }
+        
+        .count-display.highlighted:hover {
+            background-color: #c8e5ff;
+        }
+        
+        body.dark-mode .count-display:hover {
+            background-color: #2f2f2f;
+        }
+        
+        body.dark-mode .count-display.highlighted {
+            background-color: #1a4771;
+            color: #a8d1ff;
+        }
+        
+        body.dark-mode .count-display.highlighted:hover {
+            background-color: #235892;
+        }
+        
         .header-button {
             background: none;
             border: none;
@@ -178,7 +201,7 @@
             outline: none;
             resize: none;
             font-size: 16px;
-            line-height: 1.6;
+            line-height: 1.5;
             background-color: transparent;
             color: inherit;
         }
@@ -293,13 +316,30 @@
         // Update the character or word count
         function updateCount() {
             const text = page.value;
+            const selection = page.value.substring(page.selectionStart, page.selectionEnd);
+            const hasSelection = selection.length > 0;
             
-            if (countMode === 'characters') {
-                countDisplay.textContent = `${text.length} characters`;
+            countDisplay.classList.toggle('highlighted', hasSelection);
+            if (hasSelection) {
+                countDisplay.title = "Counting selected text";
+                // Count selected text
+                if (countMode === 'characters') {
+                    countDisplay.textContent = `${selection.length} characters`;
+                } else {
+                    // Count words by splitting on whitespace
+                    const wordCount = selection.trim() === '' ? 0 : selection.trim().split(/\s+/).length;
+                    countDisplay.textContent = `${wordCount} words`;
+                }
             } else {
-                // Count words by splitting on whitespace
-                const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-                countDisplay.textContent = `${wordCount} words`;
+                countDisplay.title = "Click to toggle between characters/words count";
+                // Count all text
+                if (countMode === 'characters') {
+                    countDisplay.textContent = `${text.length} characters`;
+                } else {
+                    // Count words by splitting on whitespace
+                    const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+                    countDisplay.textContent = `${wordCount} words`;
+                }
             }
         }
         
@@ -425,6 +465,15 @@
             
             // Set up event listeners
             page.addEventListener('input', handleInput);
+            page.addEventListener('select', updateCount);
+            page.addEventListener('mouseup', updateCount);
+            page.addEventListener('keyup', function(e) {
+                // Check for selection related keys
+                if (e.key === 'Shift' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || 
+                    e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Home' || e.key === 'End') {
+                    updateCount();
+                }
+            });
             countDisplay.addEventListener('click', toggleCountMode);
             
             // Set up spellcheck toggle
