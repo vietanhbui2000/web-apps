@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="An infinite blank page to write everything in your browser. Built with Claude & Cursor.">
+    <title>Blank Page</title>
+    <meta name="theme-color" content="#f5f5f5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Blank Page">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-512x512.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        /* CSS Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Base Styles */
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f5f5f5;
+            transition: background-color 0.3s ease;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .header {
+            padding: 12px 20px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .title-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        #page {
+            flex: 1;
+            width: 100%;
+            padding: 20px;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 16px;
+            line-height: 1.5;
+            background-color: transparent;
+            color: inherit;
+        }
+        
+        /* Screen Mode Styles */
+        body.fullscreen {
+            background-color: #ffffff;
+        }
+        
+        body.centered .container {
+            max-width: 800px;
+            height: calc(100vh - 40px);
+            margin: 20px auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Button & Counter Styles */
+        .header-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #888;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+        }
+        
+        .header-button:hover {
+            color: #333;
+        }
+        
+        .icon {
+            display: none;
+            font-size: 16px;
+        }
+        
+        .icon.active {
+            display: block;
+        }
+        
+        .count-display {
+            color: #666;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .count-display:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .count-display.highlighted {
+            background-color: #e0f0ff;
+            color: #0066cc;
+            font-weight: 500;
+        }
+        
+        .count-display.highlighted:hover {
+            background-color: #c8e5ff;
+        }
+        
+        .status {
+            color: #888;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .status.visible {
+            opacity: 1;
+        }
+        
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #1f1f1f;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode.fullscreen {
+            background-color: #121212;
+        }
+        
+        body.dark-mode .container {
+            background-color: #121212;
+        }
+        
+        body.dark-mode .header {
+            border-bottom: 1px solid #333;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .count-display {
+            color: #aaa;
+        }
+        
+        body.dark-mode .count-display:hover {
+            background-color: #2f2f2f;
+        }
+        
+        body.dark-mode #page {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .status {
+            color: #aaa;
+        }
+        
+        body.dark-mode .header-button {
+            color: #aaa;
+        }
+        
+        body.dark-mode .header-button:hover {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode.centered .container {
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-mode .count-display.highlighted {
+            background-color: #1a4771;
+            color: #a8d1ff;
+        }
+        
+        body.dark-mode .count-display.highlighted:hover {
+            background-color: #235892;
+        }
+        
+        /* Media Queries */
+        @media (max-width: 600px) {
+            body.centered .container {
+                height: 100vh;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            
+            .header {
+                padding: 10px 16px;
+            }
+            
+            #page {
+                padding: 16px;
+                font-size: 16px;
+            }
+            
+            .controls {
+                gap: 14px;
+            }
+            
+            .header-button {
+                padding: 8px;
+            }
+            
+            .icon {
+                font-size: 18px;
+            }
+            
+            .count-display {
+                font-size: 14px;
+                padding: 4px 6px;
+            }
+        }
+        
+        /* Additional media queries for smaller devices */
+        @media (max-width: 380px) {
+            .header {
+                padding: 8px 12px;
+            }
+            
+            .header h1 {
+                font-size: 16px;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+            
+            .count-display {
+                font-size: 13px;
+            }
+            
+            #page {
+                padding: 12px;
+            }
+        }
+        
+        /* Landscape orientation */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .header {
+                padding: 6px 16px;
+            }
+            
+            .header h1 {
+                font-size: 16px;
+            }
+            
+            #page {
+                padding: 10px 16px;
+            }
+        }
+        
+        /* PWA Installation prompt */
+        #installPrompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            max-width: 90%;
+            width: 320px;
+        }
+        
+        body.dark-mode #installPrompt {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        #installPrompt p {
+            font-size: 14px;
+            margin: 0;
+            flex: 1;
+        }
+        
+        #installPrompt button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        #installPrompt .close {
+            background: none;
+            color: #888;
+            font-size: 18px;
+            padding: 0;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title-area">
+                <h1>Blank Page</h1>
+                <div class="status" id="status">Saved</div>
+            </div>
+            <div class="controls">
+                <div id="countDisplay" class="count-display" title="Click to toggle between characters/words count">0 characters</div>
+                
+                <button id="spellcheckToggle" class="header-button" title="Check spelling?">
+                    <i class="icon active fa-regular fa-circle-check" id="spellcheckOnIcon"></i>
+                    <i class="icon fa-regular fa-circle-dot" id="spellcheckOffIcon"></i>
+                </button>
+                
+                <button id="displayModeToggle" class="header-button" title="Display mode">
+                    <i class="icon active fa-regular fa-face-smile-wink" id="autoModeIcon"></i>
+                    <i class="icon fa-regular fa-sun" id="lightModeIcon"></i>
+                    <i class="icon fa-regular fa-moon" id="darkModeIcon"></i>
+                </button>
+                
+                <button id="screenModeToggle" class="header-button" title="Screen mode">
+                    <i class="icon active fa-regular fa-square-minus" id="centeredIcon"></i>
+                    <i class="icon fa-regular fa-square-plus" id="fullscreenIcon"></i>
+                </button>
+            </div>
+        </div>
+        <textarea id="page" autofocus placeholder="Start typing..." spellcheck="true"></textarea>
+    </div>
+    
+    <!-- PWA Install Prompt -->
+    <div id="installPrompt">
+        <p>Install Blank Page for offline use</p>
+        <button id="installButton">Install</button>
+        <button class="close" id="closePrompt">&times;</button>
+    </div>
+
+    <script>
+        (() => {
+            // Constants
+            const STORAGE_KEYS = {
+                CONTENT: 'blank-page-content',
+                COUNT_MODE: 'blank-page-count-mode',
+                SPELLCHECK: 'blank-page-spellcheck',
+                DISPLAY_MODE: 'blank-page-display-mode',
+                SCREEN_MODE: 'blank-page-screen-mode',
+                INSTALL_PROMPT_DISMISSED: 'blank-page-install-prompt-dismissed'
+            };
+            
+            const DISPLAY_MODES = {
+                LIGHT: 'light',
+                DARK: 'dark',
+                AUTO: 'auto'
+            };
+            
+            const SCREEN_MODES = {
+                CENTERED: 'centered',
+                FULLSCREEN: 'fullscreen'
+            };
+            
+            const COUNT_MODES = {
+                CHARACTERS: 'characters',
+                WORDS: 'words'
+            };
+            
+            // DOM Elements
+            const elements = {
+                page: document.getElementById('page'),
+                status: document.getElementById('status'),
+                countDisplay: document.getElementById('countDisplay'),
+                spellcheckToggle: document.getElementById('spellcheckToggle'),
+                displayModeToggle: document.getElementById('displayModeToggle'),
+                screenModeToggle: document.getElementById('screenModeToggle'),
+                installPrompt: document.getElementById('installPrompt'),
+                installButton: document.getElementById('installButton'),
+                closePromptButton: document.getElementById('closePrompt'),
+                icons: {
+                    spellcheckOn: document.getElementById('spellcheckOnIcon'),
+                    spellcheckOff: document.getElementById('spellcheckOffIcon'),
+                    lightMode: document.getElementById('lightModeIcon'),
+                    darkMode: document.getElementById('darkModeIcon'),
+                    autoMode: document.getElementById('autoModeIcon'),
+                    centered: document.getElementById('centeredIcon'),
+                    fullscreen: document.getElementById('fullscreenIcon')
+                }
+            };
+            
+            // App State
+            const state = {
+                saveTimeout: null,
+                countMode: COUNT_MODES.CHARACTERS,
+                displayMode: DISPLAY_MODES.AUTO,
+                screenMode: SCREEN_MODES.CENTERED,
+                deferredPrompt: null
+            };
+            
+            // UI Handlers
+            const ui = {
+                showStatus: (message) => {
+                    elements.status.textContent = message;
+                    elements.status.classList.add('visible');
+                    
+                    setTimeout(() => {
+                        elements.status.classList.remove('visible');
+                    }, 2000);
+                },
+                
+                updateIcon: (iconElement, isActive) => {
+                    iconElement.classList.toggle('active', isActive);
+                },
+                
+                applyDisplayMode: () => {
+                    document.body.classList.remove('dark-mode');
+                    
+                    if (state.displayMode === DISPLAY_MODES.DARK) {
+                        document.body.classList.add('dark-mode');
+                    } else if (state.displayMode === DISPLAY_MODES.AUTO && 
+                              window.matchMedia && 
+                              window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.body.classList.add('dark-mode');
+                    }
+                    
+                    ui.updateIcon(elements.icons.lightMode, state.displayMode === DISPLAY_MODES.LIGHT);
+                    ui.updateIcon(elements.icons.darkMode, state.displayMode === DISPLAY_MODES.DARK);
+                    ui.updateIcon(elements.icons.autoMode, state.displayMode === DISPLAY_MODES.AUTO);
+                },
+                
+                applyScreenMode: () => {
+                    const isCentered = state.screenMode === SCREEN_MODES.CENTERED;
+                    document.body.classList.toggle('centered', isCentered);
+                    document.body.classList.toggle('fullscreen', !isCentered);
+                    
+                    ui.updateIcon(elements.icons.centered, isCentered);
+                    ui.updateIcon(elements.icons.fullscreen, !isCentered);
+                },
+                
+                applySpellcheck: (isEnabled) => {
+                    elements.page.spellcheck = isEnabled;
+                    ui.updateIcon(elements.icons.spellcheckOn, isEnabled);
+                    ui.updateIcon(elements.icons.spellcheckOff, !isEnabled);
+                },
+                
+                showInstallPrompt: () => {
+                    if (state.deferredPrompt && !localStorage.getItem(STORAGE_KEYS.INSTALL_PROMPT_DISMISSED)) {
+                        elements.installPrompt.style.display = 'flex';
+                    }
+                }
+            };
+            
+            // Core Functionality
+            const app = {
+                saveContent: () => {
+                    localStorage.setItem(STORAGE_KEYS.CONTENT, elements.page.value);
+                    ui.showStatus('Saved');
+                },
+                
+                loadContent: () => {
+                    const savedContent = localStorage.getItem(STORAGE_KEYS.CONTENT);
+                    if (savedContent) {
+                        elements.page.value = savedContent;
+                    }
+                    app.updateCount();
+                },
+                
+                handleInput: () => {
+                    ui.showStatus('Saving...');
+                    app.updateCount();
+                    
+                    clearTimeout(state.saveTimeout);
+                    state.saveTimeout = setTimeout(app.saveContent, 1000);
+                },
+                
+                updateCount: () => {
+                    const text = elements.page.value;
+                    const selection = elements.page.value.substring(
+                        elements.page.selectionStart, 
+                        elements.page.selectionEnd
+                    );
+                    const hasSelection = selection.length > 0;
+                    
+                    elements.countDisplay.classList.toggle('highlighted', hasSelection);
+                    const textToCount = hasSelection ? selection : text;
+                    
+                    if (state.countMode === COUNT_MODES.CHARACTERS) {
+                        elements.countDisplay.textContent = `${textToCount.length} characters`;
+                    } else {
+                        const wordCount = textToCount.trim() === '' ? 0 : textToCount.trim().split(/\s+/).length;
+                        elements.countDisplay.textContent = `${wordCount} words`;
+                    }
+                    
+                    elements.countDisplay.title = hasSelection 
+                        ? "Counting selected text" 
+                        : "Click to toggle between characters/words count";
+                },
+                
+                toggleCountMode: () => {
+                    state.countMode = state.countMode === COUNT_MODES.CHARACTERS 
+                        ? COUNT_MODES.WORDS 
+                        : COUNT_MODES.CHARACTERS;
+                    
+                    localStorage.setItem(STORAGE_KEYS.COUNT_MODE, state.countMode);
+                    app.updateCount();
+                },
+                
+                toggleSpellcheck: () => {
+                    const isSpellcheckOn = !elements.page.spellcheck;
+                    ui.applySpellcheck(isSpellcheckOn);
+                    localStorage.setItem(STORAGE_KEYS.SPELLCHECK, isSpellcheckOn);
+                },
+                
+                toggleDisplayMode: () => {
+                    // Cycle through modes: light -> dark -> auto -> light
+                    if (state.displayMode === DISPLAY_MODES.LIGHT) {
+                        state.displayMode = DISPLAY_MODES.DARK;
+                    } else if (state.displayMode === DISPLAY_MODES.DARK) {
+                        state.displayMode = DISPLAY_MODES.AUTO;
+                    } else {
+                        state.displayMode = DISPLAY_MODES.LIGHT;
+                    }
+                    
+                    ui.applyDisplayMode();
+                    localStorage.setItem(STORAGE_KEYS.DISPLAY_MODE, state.displayMode);
+                },
+                
+                toggleScreenMode: () => {
+                    state.screenMode = state.screenMode === SCREEN_MODES.CENTERED 
+                        ? SCREEN_MODES.FULLSCREEN 
+                        : SCREEN_MODES.CENTERED;
+                    
+                    ui.applyScreenMode();
+                    localStorage.setItem(STORAGE_KEYS.SCREEN_MODE, state.screenMode);
+                },
+                
+                installApp: () => {
+                    if (state.deferredPrompt) {
+                        state.deferredPrompt.prompt();
+                        
+                        state.deferredPrompt.userChoice.then(choiceResult => {
+                            if (choiceResult.outcome === 'accepted') {
+                                ui.showStatus('App installed!');
+                            }
+                            state.deferredPrompt = null;
+                        });
+                        
+                        elements.installPrompt.style.display = 'none';
+                    }
+                },
+                
+                closeInstallPrompt: () => {
+                    elements.installPrompt.style.display = 'none';
+                    localStorage.setItem(STORAGE_KEYS.INSTALL_PROMPT_DISMISSED, 'true');
+                },
+                
+                registerServiceWorker: () => {
+                    if ('serviceWorker' in navigator) {
+                        window.addEventListener('load', () => {
+                            navigator.serviceWorker.register('service-worker.js')
+                                .then(registration => {
+                                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                                })
+                                .catch(error => {
+                                    console.log('ServiceWorker registration failed: ', error);
+                                });
+                        });
+                    }
+                },
+                
+                loadSettings: () => {
+                    // Load count mode preference
+                    const savedCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE);
+                    if (savedCountMode && (savedCountMode === COUNT_MODES.CHARACTERS || savedCountMode === COUNT_MODES.WORDS)) {
+                        state.countMode = savedCountMode;
+                    }
+                    
+                    // Load spellcheck preference
+                    const savedSpellcheck = localStorage.getItem(STORAGE_KEYS.SPELLCHECK);
+                    if (savedSpellcheck !== null) {
+                        ui.applySpellcheck(savedSpellcheck === 'true');
+                    }
+                    
+                    // Load display mode preference
+                    const savedDisplayMode = localStorage.getItem(STORAGE_KEYS.DISPLAY_MODE);
+                    if (savedDisplayMode && Object.values(DISPLAY_MODES).includes(savedDisplayMode)) {
+                        state.displayMode = savedDisplayMode;
+                    }
+                    ui.applyDisplayMode();
+                    
+                    // Load screen mode preference
+                    const savedScreenMode = localStorage.getItem(STORAGE_KEYS.SCREEN_MODE);
+                    if (savedScreenMode === SCREEN_MODES.FULLSCREEN) {
+                        state.screenMode = SCREEN_MODES.FULLSCREEN;
+                    }
+                    ui.applyScreenMode();
+                },
+                
+                setupPWA: () => {
+                    // Register service worker
+                    app.registerServiceWorker();
+                    
+                    // Listen for beforeinstallprompt event
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        // Prevent Chrome 67 and earlier from automatically showing the prompt
+                        e.preventDefault();
+                        
+                        // Stash the event so it can be triggered later
+                        state.deferredPrompt = e;
+                        
+                        // Show install prompt
+                        setTimeout(() => {
+                            ui.showInstallPrompt();
+                        }, 3000);
+                    });
+                    
+                    // PWA install button
+                    elements.installButton.addEventListener('click', app.installApp);
+                    elements.closePromptButton.addEventListener('click', app.closeInstallPrompt);
+                },
+                
+                setupEventListeners: () => {
+                    // Content changes
+                    elements.page.addEventListener('input', app.handleInput);
+                    
+                    // Selection changes
+                    elements.page.addEventListener('select', app.updateCount);
+                    elements.page.addEventListener('mouseup', app.updateCount);
+                    elements.page.addEventListener('touchend', app.updateCount);
+                    elements.page.addEventListener('keyup', (e) => {
+                        // Check for selection related keys
+                        if (['Shift', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 
+                             'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                            app.updateCount();
+                        }
+                    });
+                    
+                    // UI Controls - make them more touch-friendly
+                    elements.countDisplay.addEventListener('click', app.toggleCountMode);
+                    elements.countDisplay.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        app.toggleCountMode();
+                    });
+                    
+                    elements.spellcheckToggle.addEventListener('click', app.toggleSpellcheck);
+                    elements.displayModeToggle.addEventListener('click', app.toggleDisplayMode);
+                    elements.screenModeToggle.addEventListener('click', app.toggleScreenMode);
+                    
+                    // Handle orientation changes
+                    window.addEventListener('orientationchange', () => {
+                        setTimeout(() => {
+                            window.scrollTo(0, 0);
+                        }, 50);
+                    });
+                    
+                    // System events
+                    if (window.matchMedia) {
+                        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                            if (state.displayMode === DISPLAY_MODES.AUTO) {
+                                document.body.classList.toggle('dark-mode', e.matches);
+                            }
+                        });
+                    }
+                    
+                    // Save when window loses focus
+                    window.addEventListener('blur', () => {
+                        if (state.saveTimeout) {
+                            clearTimeout(state.saveTimeout);
+                            app.saveContent();
+                        }
+                    });
+                    
+                    // Handle virtual keyboard
+                    if ('visualViewport' in window) {
+                        window.visualViewport.addEventListener('resize', () => {
+                            // Adjust for virtual keyboard
+                            const isKeyboardVisible = window.visualViewport.height < window.innerHeight;
+                            document.body.style.height = isKeyboardVisible ? 
+                                `${window.visualViewport.height}px` : '';
+                        });
+                    }
+                },
+                
+                init: () => {
+                    app.loadSettings();
+                    app.loadContent();
+                    app.setupEventListeners();
+                    app.setupPWA();
+                }
+            };
+            
+            // Initialize the application
+            app.init();
+        })();
+    </script>
+</body>
+</html>
