@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Simple, secure 2FA code generator that works locally in your browser. Built with Claude & Cursor.">
-    <meta name="theme-color" content="#007bff">
     <title>2FA Code Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="2FA Code Generator">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-512x512.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <style>
         :root {
             --primary-color: #007bff;
@@ -473,13 +477,22 @@
         }
 
         .search-box::after {
-            content: '🔍';
+            content: '';
+            font-family: 'Font Awesome 6 Free';
+            content: '\f002';
+            font-weight: 900;
             position: absolute;
             right: 1rem;
             top: 50%;
             transform: translateY(-50%);
             opacity: 0.5;
             pointer-events: none;
+            transition: all var(--transition-duration) var(--transition-timing);
+        }
+
+        .search-box:focus-within::after {
+            color: var(--primary-color);
+            opacity: 0.8;
         }
 
         .search-box input {
