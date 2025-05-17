@@ -2,6 +2,8 @@ const CACHE_NAME = 'blank-page-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/styles.css',
+  '/script.js',
   '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css'
 ];
@@ -34,10 +36,12 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests
-  if (event.request.url.startsWith(self.location.origin) || 
-      event.request.url.includes('cdnjs.cloudflare.com')) {
-    
+  // Skip cross-origin requests except for Font Awesome
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isFontAwesome = event.request.url.includes('cdnjs.cloudflare.com');
+  
+  if (isSameOrigin || isFontAwesome) {
     event.respondWith(
       caches.match(event.request)
         .then(cachedResponse => {
@@ -62,9 +66,15 @@ self.addEventListener('fetch', event => {
             .catch(() => {
               // If both cache and network fail for HTML requests,
               // return the offline page
-              if (event.request.headers.get('accept').includes('text/html')) {
+              if (event.request.headers.get('accept')?.includes('text/html')) {
                 return caches.match('/index.html');
               }
+              
+              // Return empty response for other failures
+              return new Response('', {
+                status: 408,
+                headers: { 'Content-Type': 'text/plain' }
+              });
             });
         })
     );
