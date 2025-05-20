@@ -1,21 +1,26 @@
 {
     "name": "2FA Code Generator",
-    "short_name": "2FA Code Generator",
+    "short_name": "2FA Code Gen",
     "description": "Simple, secure 2FA code generator that works locally in your browser. Built with Claude & Cursor.",
-    "start_url": "/index.html",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#007bff",
+    "orientation": "portrait",
+    "categories": ["security", "utilities"],
     "icons": [
         {
             "src": "icons/icon-192x192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "icons/icon-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 } 
