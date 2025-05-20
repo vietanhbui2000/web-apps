@@ -1,10 +1,10 @@
 const CACHE_NAME = 'blank-page-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
-  '/manifest.json',
+  './',
+  './index.html',
+  './styles.css',
+  './script.js',
+  './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css'
 ];
 
@@ -16,6 +16,9 @@ self.addEventListener('install', event => {
         return cache.addAll(ASSETS_TO_CACHE);
       })
       .then(() => self.skipWaiting())
+      .catch(error => {
+        console.error('Service worker cache install failed:', error);
+      })
   );
 });
 
@@ -31,6 +34,9 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => self.clients.claim())
+    .catch(error => {
+      console.error('Service worker activation failed:', error);
+    })
   );
 });
 
@@ -51,23 +57,31 @@ self.addEventListener('fetch', event => {
           
           return fetch(event.request)
             .then(response => {
-              // Cache a copy of the response
-              if (response && response.status === 200 && response.type === 'basic') {
-                const responseToCache = response.clone();
-                
-                caches.open(CACHE_NAME)
-                  .then(cache => {
-                    cache.put(event.request, responseToCache);
-                  });
+              // Don't cache error responses
+              if (!response || response.status !== 200 || response.type !== 'basic') {
+                return response;
               }
+              
+              // Cache a copy of the response
+              const responseToCache = response.clone();
+              
+              caches.open(CACHE_NAME)
+                .then(cache => {
+                  cache.put(event.request, responseToCache);
+                })
+                .catch(error => {
+                  console.error('Error caching response:', error);
+                });
               
               return response;
             })
-            .catch(() => {
+            .catch(error => {
+              console.error('Fetch error:', error);
+              
               // If both cache and network fail for HTML requests,
               // return the offline page
               if (event.request.headers.get('accept')?.includes('text/html')) {
-                return caches.match('/index.html');
+                return caches.match('./index.html');
               }
               
               // Return empty response for other failures

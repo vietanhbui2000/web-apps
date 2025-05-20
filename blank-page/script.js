@@ -53,7 +53,8 @@
         countMode: COUNT_MODES.CHARACTERS,
         displayMode: DISPLAY_MODES.AUTO,
         screenMode: SCREEN_MODES.CENTERED,
-        deferredPrompt: null
+        deferredPrompt: null,
+        statusVisibilityTimeout: null
     };
     
     // UI Handlers
@@ -62,12 +63,19 @@
             elements.status.textContent = message;
             elements.status.classList.add('visible');
             
-            setTimeout(() => {
+            // Clear any existing timeout
+            if (state.statusVisibilityTimeout) {
+                clearTimeout(state.statusVisibilityTimeout);
+            }
+            
+            state.statusVisibilityTimeout = setTimeout(() => {
                 elements.status.classList.remove('visible');
+                state.statusVisibilityTimeout = null;
             }, 2000);
         },
         
         updateIcon: (iconElement, isActive) => {
+            if (!iconElement) return;
             iconElement.classList.toggle('active', isActive);
         },
         
@@ -112,28 +120,40 @@
     // Core Functionality
     const app = {
         saveContent: () => {
-            localStorage.setItem(STORAGE_KEYS.CONTENT, elements.page.value);
-            ui.showStatus('Saved');
+            try {
+                localStorage.setItem(STORAGE_KEYS.CONTENT, elements.page.value);
+                ui.showStatus('Saved');
+            } catch (error) {
+                console.error('Error saving content:', error);
+                ui.showStatus('Error saving');
+            }
         },
         
         loadContent: () => {
-            const savedContent = localStorage.getItem(STORAGE_KEYS.CONTENT);
-            if (savedContent) {
-                elements.page.value = savedContent;
+            try {
+                const savedContent = localStorage.getItem(STORAGE_KEYS.CONTENT);
+                if (savedContent) {
+                    elements.page.value = savedContent;
+                }
+                app.updateCount();
+            } catch (error) {
+                console.error('Error loading content:', error);
+                ui.showStatus('Error loading');
             }
-            app.updateCount();
         },
         
         handleInput: () => {
             ui.showStatus('Saving...');
             app.updateCount();
             
-            clearTimeout(state.saveTimeout);
+            if (state.saveTimeout) {
+                clearTimeout(state.saveTimeout);
+            }
             state.saveTimeout = setTimeout(app.saveContent, 1000);
         },
         
         updateCount: () => {
-            const text = elements.page.value;
+            const text = elements.page.value || '';
             const selection = elements.page.value.substring(
                 elements.page.selectionStart, 
                 elements.page.selectionEnd
@@ -143,11 +163,17 @@
             elements.countDisplay.classList.toggle('highlighted', hasSelection);
             const textToCount = hasSelection ? selection : text;
             
+            let countText;
             if (state.countMode === COUNT_MODES.CHARACTERS) {
-                elements.countDisplay.textContent = `${textToCount.length} characters`;
+                countText = `${textToCount.length} characters`;
             } else {
                 const wordCount = textToCount.trim() === '' ? 0 : textToCount.trim().split(/\s+/).length;
-                elements.countDisplay.textContent = `${wordCount} words`;
+                countText = `${wordCount} words`;
+            }
+            
+            // Only update DOM if the text has changed
+            if (elements.countDisplay.textContent !== countText) {
+                elements.countDisplay.textContent = countText;
             }
             
             elements.countDisplay.title = hasSelection 
@@ -156,7 +182,7 @@
             
             // Update aria-label for screen readers
             elements.countDisplay.setAttribute('aria-label', 
-                `${hasSelection ? 'Selected text: ' : ''}${elements.countDisplay.textContent}`);
+                `${hasSelection ? 'Selected text: ' : ''}${countText}`);
         },
         
         toggleCountMode: () => {
@@ -164,14 +190,23 @@
                 ? COUNT_MODES.WORDS 
                 : COUNT_MODES.CHARACTERS;
             
-            localStorage.setItem(STORAGE_KEYS.COUNT_MODE, state.countMode);
-            app.updateCount();
+            try {
+                localStorage.setItem(STORAGE_KEYS.COUNT_MODE, state.countMode);
+                app.updateCount();
+            } catch (error) {
+                console.error('Error saving count mode:', error);
+            }
         },
         
         toggleSpellcheck: () => {
             const isSpellcheckOn = !elements.page.spellcheck;
             ui.applySpellcheck(isSpellcheckOn);
-            localStorage.setItem(STORAGE_KEYS.SPELLCHECK, isSpellcheckOn);
+            
+            try {
+                localStorage.setItem(STORAGE_KEYS.SPELLCHECK, isSpellcheckOn);
+            } catch (error) {
+                console.error('Error saving spellcheck setting:', error);
+            }
         },
         
         toggleDisplayMode: () => {
@@ -185,7 +220,12 @@
             }
             
             ui.applyDisplayMode();
-            localStorage.setItem(STORAGE_KEYS.DISPLAY_MODE, state.displayMode);
+            
+            try {
+                localStorage.setItem(STORAGE_KEYS.DISPLAY_MODE, state.displayMode);
+            } catch (error) {
+                console.error('Error saving display mode:', error);
+            }
         },
         
         toggleScreenMode: () => {
@@ -194,7 +234,12 @@
                 : SCREEN_MODES.CENTERED;
             
             ui.applyScreenMode();
-            localStorage.setItem(STORAGE_KEYS.SCREEN_MODE, state.screenMode);
+            
+            try {
+                localStorage.setItem(STORAGE_KEYS.SCREEN_MODE, state.screenMode);
+            } catch (error) {
+                console.error('Error saving screen mode:', error);
+            }
         },
         
         installApp: () => {
@@ -206,6 +251,8 @@
                         ui.showStatus('App installed!');
                     }
                     state.deferredPrompt = null;
+                }).catch(error => {
+                    console.error('Installation error:', error);
                 });
                 
                 elements.installPrompt.style.display = 'none';
@@ -214,7 +261,11 @@
         
         closeInstallPrompt: () => {
             elements.installPrompt.style.display = 'none';
-            localStorage.setItem(STORAGE_KEYS.INSTALL_PROMPT_DISMISSED, 'true');
+            try {
+                localStorage.setItem(STORAGE_KEYS.INSTALL_PROMPT_DISMISSED, 'true');
+            } catch (error) {
+                console.error('Error saving prompt dismissed state:', error);
+            }
         },
         
         registerServiceWorker: () => {
@@ -225,38 +276,42 @@
                             console.log('ServiceWorker registration successful with scope: ', registration.scope);
                         })
                         .catch(error => {
-                            console.log('ServiceWorker registration failed: ', error);
+                            console.error('ServiceWorker registration failed: ', error);
                         });
                 });
             }
         },
         
         loadSettings: () => {
-            // Load count mode preference
-            const savedCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE);
-            if (savedCountMode && Object.values(COUNT_MODES).includes(savedCountMode)) {
-                state.countMode = savedCountMode;
+            try {
+                // Load count mode preference
+                const savedCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE);
+                if (savedCountMode && Object.values(COUNT_MODES).includes(savedCountMode)) {
+                    state.countMode = savedCountMode;
+                }
+                
+                // Load spellcheck preference
+                const savedSpellcheck = localStorage.getItem(STORAGE_KEYS.SPELLCHECK);
+                if (savedSpellcheck !== null) {
+                    ui.applySpellcheck(savedSpellcheck === 'true');
+                }
+                
+                // Load display mode preference
+                const savedDisplayMode = localStorage.getItem(STORAGE_KEYS.DISPLAY_MODE);
+                if (savedDisplayMode && Object.values(DISPLAY_MODES).includes(savedDisplayMode)) {
+                    state.displayMode = savedDisplayMode;
+                }
+                ui.applyDisplayMode();
+                
+                // Load screen mode preference
+                const savedScreenMode = localStorage.getItem(STORAGE_KEYS.SCREEN_MODE);
+                if (savedScreenMode === SCREEN_MODES.FULLSCREEN) {
+                    state.screenMode = SCREEN_MODES.FULLSCREEN;
+                }
+                ui.applyScreenMode();
+            } catch (error) {
+                console.error('Error loading settings:', error);
             }
-            
-            // Load spellcheck preference
-            const savedSpellcheck = localStorage.getItem(STORAGE_KEYS.SPELLCHECK);
-            if (savedSpellcheck !== null) {
-                ui.applySpellcheck(savedSpellcheck === 'true');
-            }
-            
-            // Load display mode preference
-            const savedDisplayMode = localStorage.getItem(STORAGE_KEYS.DISPLAY_MODE);
-            if (savedDisplayMode && Object.values(DISPLAY_MODES).includes(savedDisplayMode)) {
-                state.displayMode = savedDisplayMode;
-            }
-            ui.applyDisplayMode();
-            
-            // Load screen mode preference
-            const savedScreenMode = localStorage.getItem(STORAGE_KEYS.SCREEN_MODE);
-            if (savedScreenMode === SCREEN_MODES.FULLSCREEN) {
-                state.screenMode = SCREEN_MODES.FULLSCREEN;
-            }
-            ui.applyScreenMode();
         },
         
         setupPWA: () => {
@@ -271,7 +326,7 @@
                 // Stash the event so it can be triggered later
                 state.deferredPrompt = e;
                 
-                // Show install prompt
+                // Show install prompt after a short delay
                 setTimeout(() => {
                     ui.showInstallPrompt();
                 }, 3000);
@@ -282,28 +337,30 @@
             elements.closePromptButton.addEventListener('click', app.closeInstallPrompt);
         },
         
+        handleSelectionChange: () => {
+            requestAnimationFrame(app.updateCount);
+        },
+        
+        handleArrowKeys: (e) => {
+            // Check for selection related keys
+            if (['Shift', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 
+                 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                app.handleSelectionChange();
+            }
+        },
+        
         setupEventListeners: () => {
             // Content changes
             elements.page.addEventListener('input', app.handleInput);
             
-            // Selection changes
-            elements.page.addEventListener('select', app.updateCount);
-            elements.page.addEventListener('mouseup', app.updateCount);
-            elements.page.addEventListener('touchend', app.updateCount);
-            elements.page.addEventListener('keyup', (e) => {
-                // Check for selection related keys
-                if (['Shift', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 
-                     'ArrowDown', 'Home', 'End'].includes(e.key)) {
-                    app.updateCount();
-                }
-            });
+            // Selection changes (debounced via requestAnimationFrame)
+            elements.page.addEventListener('select', app.handleSelectionChange);
+            elements.page.addEventListener('mouseup', app.handleSelectionChange);
+            elements.page.addEventListener('touchend', app.handleSelectionChange);
+            elements.page.addEventListener('keyup', app.handleArrowKeys);
             
             // UI Controls - keyboard and touch friendly
             elements.countDisplay.addEventListener('click', app.toggleCountMode);
-            elements.countDisplay.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                app.toggleCountMode();
-            });
             elements.countDisplay.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -326,15 +383,16 @@
             if (window.matchMedia) {
                 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
                 
-                // Use addEventListener if supported (newer browsers)
-                if (darkModeMediaQuery.addEventListener) {
+                // Use addEventListener for all browsers (backwards compatibility handled internally)
+                try {
                     darkModeMediaQuery.addEventListener('change', (e) => {
                         if (state.displayMode === DISPLAY_MODES.AUTO) {
                             document.body.classList.toggle('dark-mode', e.matches);
                         }
                     });
-                } else {
+                } catch (error) {
                     // Fallback for older browsers
+                    console.warn('MediaQueryList.addEventListener not supported');
                     darkModeMediaQuery.addListener((e) => {
                         if (state.displayMode === DISPLAY_MODES.AUTO) {
                             document.body.classList.toggle('dark-mode', e.matches);
@@ -360,6 +418,14 @@
                         `${window.visualViewport.height}px` : '';
                 });
             }
+            
+            // Ensure content is saved before page unloads
+            window.addEventListener('beforeunload', () => {
+                if (state.saveTimeout) {
+                    clearTimeout(state.saveTimeout);
+                    app.saveContent();
+                }
+            });
         },
         
         init: () => {
