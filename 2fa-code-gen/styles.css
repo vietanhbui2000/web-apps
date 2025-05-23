@@ -79,7 +79,7 @@ label {
     font-weight: 500;
 }
 
-input {
+input, textarea {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid var(--border-color);
@@ -88,7 +88,7 @@ input {
     transition: all var(--transition-duration) var(--transition-timing);
 }
 
-input:focus {
+input:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
@@ -115,7 +115,7 @@ button:hover {
 
 .codes-container {
     margin: 0 -2rem;
-    padding: 0 2rem;
+    padding: 0.5rem 2rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -137,12 +137,9 @@ button:hover {
         black calc(100% - 1rem),
         transparent 100%
     );
-    padding-top: 0.5rem;
-    padding-bottom: 1.5rem;
 }
 
 .codes-container-inner {
-    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -163,8 +160,8 @@ button:hover {
     flex-shrink: 0;
     justify-content: space-between;
     box-shadow: var(--shadow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                outline-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-timing),
+                outline-color 0.2s var(--transition-timing);
     transform: translateY(0);
     outline: 2px solid transparent;
     outline-offset: 2px;
@@ -176,7 +173,6 @@ button:hover {
     transform: translateY(-2px);
     box-shadow: var(--hover-shadow);
     border-color: var(--primary-color);
-    margin: 2px;
 }
 
 .code-display:focus-within {
@@ -191,7 +187,7 @@ button:hover {
     gap: 0.5rem;
     min-width: 0;
     max-width: 50%;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-timing);
     pointer-events: auto;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
@@ -213,8 +209,7 @@ button:hover {
     white-space: nowrap;
     flex: 1;
     min-width: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-width: 100%;
+    transition: all 0.3s var(--transition-timing);
     hyphens: auto;
     user-select: none;
     -webkit-user-select: none;
@@ -234,22 +229,16 @@ button:hover {
     color: var(--primary-color);
 }
 
-.account-name-container:has(.account-action-btn.edit:hover) .account-name {
-    color: #ffc107;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.account-name-container:has(.account-action-btn.delete:hover) .account-name {
-    color: var(--danger-color);
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
+.account-name-container:has(.account-action-btn.edit:hover) .account-name,
 .account-name-container:has(.account-action-btn.edit.active) .account-name {
     color: #ffc107;
+    transition: color 0.2s var(--transition-timing);
 }
 
+.account-name-container:has(.account-action-btn.delete:hover) .account-name,
 .account-name-container:has(.account-action-btn.delete.active) .account-name {
     color: var(--danger-color);
+    transition: color 0.2s var(--transition-timing);
 }
 
 .account-actions {
@@ -278,7 +267,7 @@ button:hover {
     border-radius: 4px;
     cursor: pointer;
     color: var(--text-secondary);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s var(--transition-timing);
 }
 
 .account-action-btn:hover {
@@ -345,7 +334,7 @@ button:hover {
     padding: 0.75rem 1.25rem;
     background: rgba(0, 0, 0, 0.03);
     border-radius: var(--border-radius);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-timing);
     flex-shrink: 0;
     min-width: 160px;
     text-align: center;
@@ -371,21 +360,17 @@ button:hover {
 }
 
 .code-wrapper.copied {
-    animation: copy-success-animation 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     background: rgba(0, 123, 255, 0.15);
     border-color: var(--primary-color);
     transform-origin: center;
     box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
+    animation: copy-success-animation 0.8s var(--transition-timing) forwards;
 }
 
 .code-wrapper.copied .copy-indicator {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
     animation: copy-indicator-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.code-wrapper.copied::after {
-    display: none;
 }
 
 .code {
@@ -413,58 +398,6 @@ button:hover {
     opacity: 0.3;
     transition: opacity 0.3s ease;
     transform: scale(0.95);
-}
-
-.delete-btn {
-    background-color: transparent;
-    color: var(--danger-color);
-    border: none;
-    width: 24px;
-    height: 24px;
-    font-size: 1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: var(--transition);
-    padding: 0;
-    line-height: 1;
-    flex-shrink: 0;
-    border-radius: 4px;
-}
-
-.account-name-container:hover .delete-btn {
-    opacity: 0.7;
-}
-
-.delete-btn:hover {
-    opacity: 1 !important;
-    background-color: rgba(220, 53, 69, 0.1);
-}
-
-.footer {
-    text-align: center;
-    padding: 0.75rem 1rem;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    border-top: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    margin: 0 -2rem -2rem;
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
-    opacity: 0.8;
-    line-height: 1.4;
-}
-
-.footer a {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: var(--transition);
-}
-
-.footer a:hover {
-    color: var(--primary-hover);
-    text-decoration: underline;
 }
 
 /* Timer and Search Component */
@@ -581,7 +514,6 @@ button:hover {
     transition: transform 1s linear;
 }
 
-/* Clean up the no-longer-needed animation styles */
 .timer-circle-progress.resetting {
     transition: transform 0.6s ease-out;
 }
@@ -702,11 +634,10 @@ button:hover {
     margin-right: 52px;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 480px) {
-    .timer-search-container.search-active .search-input-container {
-        width: calc(100vw - 150px);
-    }
+.timer-search-container.search-active .timer-wrapper {
+    min-width: 42px;
+    width: 42px;
+    flex: 0 0 42px;
 }
 
 .action-buttons-container {
@@ -753,84 +684,11 @@ button:hover {
 }
 
 .add-account-btn i {
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s var(--transition-timing);
 }
 
 .add-account-btn.active i {
     transform: rotate(45deg);
-}
-
-@keyframes dialog-slide-up {
-    from {
-        opacity: 0;
-        transform: translateY(40px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.dialog-form {
-    opacity: 0;
-    transform: translateY(40px);
-    visibility: hidden;
-    pointer-events: none;
-    position: absolute;
-    bottom: calc(100% + 1.5rem);
-    left: 0;
-    right: 0;
-    background: white;
-    padding: var(--spacing-lg);
-    border-radius: var(--border-radius);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    z-index: 100;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid var(--border-color);
-    max-height: calc(100vh - 200px);
-    overflow-y: auto;
-    margin: 0 2rem;
-    max-width: calc(100% - 4rem);
-    width: auto;
-    transform-origin: bottom center;
-    overflow-x: hidden;
-}
-
-.dialog-form.visible {
-    opacity: 1;
-    transform: translateY(0);
-    visibility: visible;
-    pointer-events: auto;
-    animation: dialog-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dialog-form h2 {
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-}
-
-.dialog-description {
-    margin-bottom: 1.5rem;
-    color: var(--text-secondary);
-}
-
-.dialog-buttons {
-    display: flex;
-    gap: 1rem;
-}
-
-.dialog-buttons button {
-    flex: 1;
-}
-
-.dialog-buttons button.secondary {
-    background-color: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.dialog-buttons button.secondary:hover {
-    background-color: var(--bg-secondary);
 }
 
 .icon-button {
@@ -919,7 +777,7 @@ button:hover {
     color: var(--primary-color);
     font-size: 2rem;
     opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-timing);
     z-index: 3;
     pointer-events: none;
     text-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
@@ -978,7 +836,7 @@ button:hover {
     }
 }
 
-/* Add focus-visible styles for better keyboard navigation */
+/* Focus-visible styles for better keyboard navigation */
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
@@ -990,18 +848,67 @@ textarea:focus-visible,
     z-index: 1;
 }
 
-/* Legacy animation for backwards compatibility */
-@keyframes pulse-animation {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
+/* Dialog forms */
+.dialog-form {
+    opacity: 0;
+    transform: translateY(40px);
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    bottom: calc(100% + 1.5rem);
+    left: 0;
+    right: 0;
+    background: white;
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    transition: all 0.3s var(--transition-timing);
+    border: 1px solid var(--border-color);
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    margin: 0 2rem;
+    max-width: calc(100% - 4rem);
+    width: auto;
+    transform-origin: bottom center;
+    overflow-x: hidden;
 }
 
-.code-wrapper.copied {
-    animation: pulse-animation 0.5s ease forwards;
-    background: rgba(0, 123, 255, 0.08);
-    border-color: var(--primary-color);
-    transform-origin: center;
+.dialog-form.visible {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    animation: dialog-slide-up 0.3s var(--transition-timing);
+}
+
+.dialog-form h2 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.dialog-description {
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.dialog-buttons button {
+    flex: 1;
+}
+
+.dialog-buttons button.secondary {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.dialog-buttons button.secondary:hover {
+    background-color: var(--bg-secondary);
 }
 
 @media (max-width: 768px) {
@@ -1066,10 +973,6 @@ textarea:focus-visible,
         display: none;
     }
 
-    .code-wrapper.copied::after {
-        display: none;
-    }
-
     .account-action-btn {
         width: 40px;
         height: 40px;
@@ -1094,35 +997,13 @@ textarea:focus-visible,
         background: rgba(220, 53, 69, 0.15);
     }
 
-    .account-action-btn.delete.confirm {
-        color: var(--danger-color);
-        background: rgba(220, 53, 69, 0.15);
-        transform: scale(0.95);
-    }
-
     .account-action-btn:hover {
         transform: none;
         background: none;
     }
 
-    .account-action-btn:active,
-    .account-action-btn.confirm {
-        transform: scale(0.95);
-    }
-
     .copy-indicator {
         font-size: 1.1rem;
-    }
-    
-    @keyframes dialog-slide-up-tablet {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
     
     .dialog-form {
@@ -1132,7 +1013,7 @@ textarea:focus-visible,
     }
     
     .dialog-form.visible {
-        animation: dialog-slide-up-tablet 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: dialog-slide-up-tablet 0.3s var(--transition-timing);
     }
 
     .action-buttons-container {
@@ -1144,9 +1025,8 @@ textarea:focus-visible,
 
     .codes-container {
         margin: 0 -1rem;
-        padding: 0 1rem;
+        padding: 0.5rem 1rem 1.25rem;
         gap: 1.25rem;
-        padding-bottom: 1.25rem;
     }
 
     .codes-container-inner {
@@ -1209,20 +1089,8 @@ textarea:focus-visible,
 
     .codes-container {
         margin: 0 -1rem;
-        padding: 0 1rem;
+        padding: 0.5rem 1rem 1rem;
         gap: 1rem;
-        padding-bottom: 1rem;
-    }
-    
-    @keyframes dialog-slide-up-mobile {
-        from {
-            opacity: 0;
-            transform: translateY(50px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
     
     .dialog-form {
@@ -1236,11 +1104,15 @@ textarea:focus-visible,
     }
     
     .dialog-form.visible {
-        animation: dialog-slide-up-mobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: dialog-slide-up-mobile 0.3s var(--transition-timing);
     }
     
     textarea {
         height: 120px;
+    }
+
+    .timer-search-container.search-active .search-input-container {
+        width: calc(100vw - 150px);
     }
 
     @supports (-webkit-touch-callout: none) {
@@ -1279,6 +1151,30 @@ textarea:focus-visible,
     
     .account-name-container .account-name {
         pointer-events: none;
+    }
+}
+
+/* Tablet-specific dialog animation */
+@keyframes dialog-slide-up-tablet {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile-specific dialog animation */
+@keyframes dialog-slide-up-mobile {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -1322,7 +1218,7 @@ mark {
     z-index: 2000;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-timing);
 }
 
 .toast.visible {
@@ -1344,12 +1240,7 @@ mark {
 }
 
 textarea {
-    width: 100%;
     height: 200px;
-    padding: 0.75rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    font-size: 1rem;
     resize: none;
     margin-bottom: 1.5rem;
     font-family: monospace;
@@ -1387,10 +1278,6 @@ textarea:focus {
     position: relative;
 }
 
-.app-header::after {
-    display: none;
-}
-
 .app-header h1 {
     color: var(--text-primary);
     text-align: center;
@@ -1405,27 +1292,4 @@ textarea:focus {
 
 #deleteDialog button:not(.secondary):hover {
     background-color: var(--danger-hover);
-}
-
-.search-expanded input {
-    flex: 1;
-    border: none;
-    padding: 0.75rem 0.75rem;
-    box-shadow: none;
-    font-size: 0.95rem;
-    opacity: 0;
-    transition: opacity 0.2s var(--transition-timing);
-    transition-delay: 0.1s;
-}
-
-.search-expanded input:focus {
-    outline: none;
-    border: none;
-    box-shadow: none;
-}
-
-.timer-search-container.search-active .timer-wrapper {
-    min-width: 42px;
-    width: 42px;
-    flex: 0 0 42px;
 } 

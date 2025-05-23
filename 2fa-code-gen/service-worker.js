@@ -15,6 +15,9 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(ASSETS_TO_CACHE))
             .then(() => self.skipWaiting())
+            .catch((error) => {
+                console.error('Failed to cache assets during install:', error);
+            })
     );
 });
 
@@ -32,92 +35,89 @@ self.addEventListener('activate', (event) => {
                 );
             })
             .then(() => self.clients.claim())
+            .catch((error) => {
+                console.error('Failed to clean up caches during activate:', error);
+            })
     );
 });
 
-// Fetch event - serve from cache, fall back to network
+// Optimized fetch event handler
 self.addEventListener('fetch', (event) => {
-    // Skip cross-origin requests to improve performance
-    if (!event.request.url.startsWith(self.location.origin) && 
-        !event.request.url.includes('cdnjs.cloudflare.com')) {
-        return;
-    }
+    const { request } = event;
+    const requestUrl = new URL(request.url);
     
-    // For HTML requests - use network-first strategy
-    if (event.request.headers.get('Accept') && 
-        event.request.headers.get('Accept').includes('text/html')) {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    if (!response || response.status !== 200) {
-                        return caches.match(event.request);
-                    }
-                    
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    
-                    return response;
-                })
-                .catch(() => {
-                    return caches.match(event.request);
-                })
-        );
-        return;
-    }
+    // Skip non-GET requests and cross-origin requests except allowed CDNs
+    if (request.method !== 'GET') return;
     
-    // For all other requests - use cache-first strategy
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                if (response) {
-                    return response;
-                }
-                
-                return fetch(event.request)
-                    .then((response) => {
-                        // Don't cache non-GET requests
-                        if (event.request.method !== 'GET') {
-                            return response;
-                        }
-                        
-                        // Don't cache error responses
-                        if (!response || response.status !== 200) {
-                            return response;
-                        }
-                        
-                        // Clone the response as it can only be consumed once
-                        const responseToCache = response.clone();
-                        
-                        caches.open(CACHE_NAME)
-                            .then((cache) => {
-                                cache.put(event.request, responseToCache)
-                                    .catch(err => {
-                                        console.error('Cache put error:', err);
-                                    });
-                            });
-                            
-                        return response;
-                    })
-                    .catch(error => {
-                        console.error('Fetch error:', error);
-                        
-                        // For JavaScript and CSS files, return a fallback
-                        if (event.request.url.match(/\.(js|css)$/)) {
-                            return caches.match(event.request);
-                        }
-                        
-                        // Return a custom offline response
-                        return new Response('Network error. Please check your connection.', {
-                            status: 503,
-                            statusText: 'Service Unavailable',
-                            headers: new Headers({
-                                'Content-Type': 'text/plain'
-                            })
-                        });
-                    });
-            })
-    );
-}); 
+    const isSameOrigin = requestUrl.origin === self.location.origin;
+    const isAllowedCDN = requestUrl.hostname === 'cdnjs.cloudflare.com';
+    
+    if (!isSameOrigin && !isAllowedCDN) return;
+    
+    // Use different strategies based on request type
+    if (request.headers.get('Accept')?.includes('text/html')) {
+        // Network-first strategy for HTML requests
+        event.respondWith(handleHTMLRequest(request));
+    } else {
+        // Cache-first strategy for other resources
+        event.respondWith(handleResourceRequest(request));
+    }
+});
+
+// Handle HTML requests with network-first strategy
+async function handleHTMLRequest(request) {
+    try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+            // Cache successful responses
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, response.clone()).catch(console.error);
+            return response;
+        }
+        throw new Error('Network response not ok');
+    } catch (error) {
+        // Fallback to cache
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // Return offline page or error response
+        return new Response('Offline - Please check your connection', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' }
+        });
+    }
+}
+
+// Handle resource requests with cache-first strategy
+async function handleResourceRequest(request) {
+    try {
+        // Try cache first
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            return cachedResponse;
+        }
+        
+        // If not in cache, fetch from network
+        const response = await fetch(request);
+        if (response && response.ok) {
+            // Cache successful responses
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, response.clone()).catch(console.error);
+            return response;
+        }
+        
+        throw new Error('Network response not ok');
+    } catch (error) {
+        console.error('Resource fetch failed:', error);
+        
+        // Return a minimal error response for failed resources
+        return new Response('', {
+            status: 408,
+            statusText: 'Request Timeout',
+            headers: { 'Content-Type': 'text/plain' }
+        });
+    }
+} 
