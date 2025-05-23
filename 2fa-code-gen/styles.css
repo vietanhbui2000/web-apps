@@ -42,6 +42,8 @@ body {
     color: var(--text-primary);
     display: flex;
     min-height: 100%;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .container {
@@ -190,6 +192,9 @@ button:hover {
     min-width: 0;
     max-width: 50%;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .code-display:hover .account-name-container {
@@ -211,6 +216,13 @@ button:hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-width: 100%;
     hyphens: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .code-display:hover .account-name {
@@ -341,8 +353,14 @@ button:hover {
     border: 1px solid transparent;
     cursor: pointer;
     user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     overflow: hidden;
     will-change: transform, background-color, border-color;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .code-wrapper:hover {
@@ -353,16 +371,17 @@ button:hover {
 }
 
 .code-wrapper.copied {
-    animation: pulse-animation 0.5s ease forwards;
-    background: rgba(0, 123, 255, 0.08);
+    animation: copy-success-animation 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    background: rgba(0, 123, 255, 0.15);
     border-color: var(--primary-color);
     transform-origin: center;
+    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
 }
 
 .code-wrapper.copied .copy-indicator {
     opacity: 1;
-    transform: translate(-50%, -50%);
-    animation: none;
+    transform: translate(-50%, -50%) scale(1);
+    animation: copy-indicator-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .code-wrapper.copied::after {
@@ -391,8 +410,9 @@ button:hover {
 }
 
 .code-wrapper.copied .code {
-    opacity: 0.15;
-    transition: opacity 0.2s ease;
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    transform: scale(0.95);
 }
 
 .delete-btn {
@@ -699,11 +719,12 @@ button:hover {
     font-size: 0.75rem;
     border-top: 1px solid var(--border-color);
     background: var(--bg-secondary);
-    margin: 0 -2rem -2rem;
+    margin: 0 -2rem -2rem -2rem;
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     margin-top: auto;
     position: relative;
     z-index: 10;
+    box-sizing: border-box;
 }
 
 .add-account-btn {
@@ -813,11 +834,11 @@ button:hover {
 }
 
 .icon-button {
-    background: none;
-    border: none;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 10px;
+    padding: 0.5rem 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -826,11 +847,10 @@ button:hover {
     width: auto;
     height: 42px;
     flex-shrink: 0;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    flex-grow: 0;
     gap: 0.5rem;
     font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
+    margin: 0;
 }
 
 .icon-button i {
@@ -895,13 +915,15 @@ button:hover {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) scale(0.8);
+    transform: translate(-50%, -50%) scale(0);
     color: var(--primary-color);
-    font-size: 1.5rem;
+    font-size: 2rem;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1;
+    z-index: 3;
     pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    filter: drop-shadow(0 0 8px rgba(0, 123, 255, 0.4));
 }
 
 .code-wrapper.copied .copy-indicator {
@@ -910,10 +932,50 @@ button:hover {
     animation: copy-indicator-pulse 0.5s ease;
 }
 
-@keyframes copy-indicator-pulse {
-    0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-    50% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+@keyframes copy-indicator-bounce {
+    0% { 
+        transform: translate(-50%, -50%) scale(0); 
+        opacity: 0; 
+    }
+    30% { 
+        transform: translate(-50%, -50%) scale(1.3); 
+        opacity: 1; 
+    }
+    60% { 
+        transform: translate(-50%, -50%) scale(0.9); 
+        opacity: 1; 
+    }
+    80% { 
+        transform: translate(-50%, -50%) scale(1.1); 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translate(-50%, -50%) scale(1); 
+        opacity: 1; 
+    }
+}
+
+@keyframes copy-success-animation {
+    0% { 
+        transform: scale(1); 
+        background: rgba(0, 0, 0, 0.03);
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+    }
+    25% { 
+        transform: scale(1.05); 
+        background: rgba(0, 123, 255, 0.12);
+        box-shadow: 0 6px 16px rgba(0, 123, 255, 0.25);
+    }
+    50% { 
+        transform: scale(1.02); 
+        background: rgba(0, 123, 255, 0.15);
+        box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
+    }
+    100% { 
+        transform: scale(1); 
+        background: rgba(0, 123, 255, 0.08);
+        box-shadow: 0 2px 12px rgba(0, 123, 255, 0.2);
+    }
 }
 
 /* Add focus-visible styles for better keyboard navigation */
@@ -928,7 +990,7 @@ textarea:focus-visible,
     z-index: 1;
 }
 
-/* Consolidated animation */
+/* Legacy animation for backwards compatibility */
 @keyframes pulse-animation {
     0% { transform: scale(1); }
     50% { transform: scale(1.02); }
@@ -1074,7 +1136,7 @@ textarea:focus-visible,
     }
 
     .action-buttons-container {
-        margin: 0 -1rem -1rem;
+        margin: 0 -1rem -1rem -1rem;
         padding: 1.5rem 1rem;
         position: relative;
         z-index: 10;
@@ -1137,7 +1199,7 @@ textarea:focus-visible,
     .action-buttons-container {
         position: sticky;
         bottom: 0;
-        margin: 0 -1rem -1rem;
+        margin: 0 -1rem -1rem -1rem;
         padding: 1.5rem 1rem;
         border-radius: 0;
         background: rgba(255, 255, 255, 0.95);
@@ -1205,6 +1267,19 @@ textarea:focus-visible,
         background: rgba(0, 123, 255, 0.1);
         transform: scale(0.98);
     }
+    
+    .code-display {
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .account-name-container {
+        pointer-events: auto;
+    }
+    
+    .account-name-container .account-name {
+        pointer-events: none;
+    }
 }
 
 mark {
@@ -1235,7 +1310,7 @@ mark {
 
 .toast {
     position: fixed;
-    bottom: 20px;
+    bottom: 120px;
     left: 50%;
     transform: translateX(-50%);
     background-color: rgba(0, 0, 0, 0.8);

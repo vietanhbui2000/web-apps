@@ -78,7 +78,7 @@ function generateTOTP(secret) {
         // Check if CryptoJS is available
         if (typeof CryptoJS === 'undefined') {
             console.error('CryptoJS library not loaded');
-            showToast('Error: Cryptography library failed to load', 'error');
+            showToast('Error: Cryptography library failed to load', 'error', 3000);
             return '------';
         }
         
@@ -125,7 +125,7 @@ function loadAccounts() {
         updateAllCodes();
     } catch (error) {
         console.error('Error loading accounts:', error);
-        showToast('Failed to load accounts', 'error');
+        showToast('Failed to load accounts', 'error', 3000);
         accounts = [];
         updateAccountsDisplay();
     }
@@ -135,9 +135,9 @@ function loadAccounts() {
 function saveAccounts() {
     try {
         localStorage.setItem('totpAccounts', JSON.stringify(accounts));
-        showToast('Changes saved', 'success', 1000);
+        showToast('Changes saved', 'success', 2000);
     } catch (error) {
-        showToast('Failed to save changes', 'error');
+        showToast('Failed to save changes', 'error', 3000);
         console.error('Save error:', error);
     }
 }
@@ -200,7 +200,7 @@ async function addAccount() {
     }
     
     if (errorMessage) {
-        showToast(errorMessage, 'error');
+        showToast(errorMessage, 'error', 3000);
         return;
     }
 
@@ -248,7 +248,7 @@ function undoDelete() {
     updateAccountsDisplay();
     updateAllCodes();
     
-    showToast('Account restored', 'success');
+    showToast('Account restored', 'success', 3000);
 }
 
 function editAccount(index) {
@@ -298,7 +298,7 @@ function saveEditAccount() {
     }
     
     if (errorMessage) {
-        showToast(errorMessage, 'error');
+        showToast(errorMessage, 'error', 3000);
         return;
     }
     
@@ -316,7 +316,7 @@ function saveEditAccount() {
 function importAccounts() {
     const importText = document.getElementById('importText').value.trim();
     if (!importText) {
-        showToast('No data to import', 'error');
+        showToast('No data to import', 'error', 3000);
         return;
     }
     
@@ -359,9 +359,9 @@ function importAccounts() {
         saveAccounts();
         updateAccountsDisplay();
         updateAllCodes();
-        showToast(`Imported ${imported} accounts`, 'success');
+        showToast(`Imported ${imported} accounts`, 'success', 3000);
     } else {
-        showToast('No valid accounts to import', 'error');
+        showToast('No valid accounts to import', 'error', 3000);
     }
     
     if (errors > 0) {
@@ -708,7 +708,7 @@ function copyCode(index) {
     
     // Don't copy if the code is in loading state or not available
     if (codeElement.textContent === '------' || codeElement.classList.contains('loading')) {
-        showToast('Code not yet available', 'warning', 1500);
+        showToast('Code not yet available', 'warning', 3000);
         return;
     }
     
@@ -757,11 +757,11 @@ function showCopySuccess(wrapper, index) {
         wrapper.removeAttribute('data-timeout-id');
         // Restore original ARIA label
         wrapper.setAttribute('aria-label', `Copy code for ${accountName}`);
-    }, 1500);
+    }, 2000);
     
     wrapper.setAttribute('data-timeout-id', newTimeoutId);
     
-    showToast('Code copied to clipboard', 'success', 1000);
+    showToast('Code copied to clipboard', 'success', 2000);
 }
 
 function fallbackCopy(text, wrapper, index) {
@@ -782,11 +782,11 @@ function fallbackCopy(text, wrapper, index) {
         if (successful) {
             showCopySuccess(wrapper, index);
         } else {
-            showToast('Failed to copy code to clipboard', 'error');
+            showToast('Failed to copy code to clipboard', 'error', 3000);
         }
     } catch (err) {
         console.error('Fallback copy failed:', err);
-        showToast('Failed to copy code to clipboard', 'error');
+        showToast('Failed to copy code to clipboard', 'error', 3000);
     }
 }
 
@@ -933,7 +933,7 @@ function copyExportText() {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textArea.value)
                 .then(() => {
-                    showToast('Export data copied to clipboard', 'success');
+                    showToast('Export data copied to clipboard', 'success', 2000);
                 })
                 .catch(err => {
                     console.error('Clipboard API error:', err);
@@ -952,18 +952,18 @@ function fallbackCopyExport(textArea) {
     try {
         const successful = document.execCommand('copy');
         if (successful) {
-            showToast('Export data copied to clipboard', 'success');
+            showToast('Export data copied to clipboard', 'success', 2000);
         } else {
-            showToast('Failed to copy to clipboard', 'error');
+            showToast('Failed to copy to clipboard', 'error', 3000);
         }
     } catch (err) {
-        showToast('Failed to copy to clipboard', 'error');
+        showToast('Failed to copy to clipboard', 'error', 3000);
         console.error('Fallback copy error:', err);
     }
 }
 
 // Toast notification functions
-function showToast(message, type = 'info', duration = 3000) {
+function showToast(message, type = 'info', duration = 5000) {
     // Remove any existing toasts
     hideToast();
     
@@ -972,11 +972,6 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.className = `toast ${type}`;
     toast.textContent = message;
     toast.setAttribute('role', 'alert');
-    
-    // For mobile, position above the action buttons
-    if (window.innerWidth <= 480) {
-        toast.style.bottom = '60px';
-    }
     
     document.body.appendChild(toast);
     
