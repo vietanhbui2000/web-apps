@@ -7,14 +7,78 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+/* CSS Variables for consistent theming */
+:root {
+    /* Light theme colors */
+    --bg-color: #f5f5f5;
+    --container-bg: #ffffff;
+    --app-header-bg: #f0f0f0;
+    --header-bg: #fafafa;
+    --border-color: #eee;
+    --text-color: #333;
+    --text-muted: #888;
+    --text-secondary: #6c757d;
+    --highlight-color: #0066cc;
+    --button-hover-bg: #f0f0f0;
+    --count-highlight-bg: #e0f0ff;
+    --count-highlight-color: #0066cc;
+    
+    /* Spacing variables */
+    --spacing-xs: 0.125rem;
+    --spacing-sm: 0.25rem;
+    --spacing-md: 0.5rem;
+    --spacing-lg: 0.75rem;
+    --spacing-xl: 1rem;
+    --spacing-xxl: 1.25rem;
+    
+    /* Border radius */
+    --border-radius-sm: 0.25rem;
+    --border-radius-md: 0.375rem;
+    --border-radius-lg: 0.5rem;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    
+    /* Element sizes */
+    --button-size: 1.875rem;
+    
+    /* Animation variables for responsive tab animations */
+    --tab-max-width: 10rem;
+    --tab-padding-horizontal: 0.75rem;
+}
+
+/* Dark theme variables */
+body.dark-mode {
+    --bg-color: #1f1f1f;
+    --container-bg: #121212;
+    --app-header-bg: #141414;
+    --header-bg: #1a1a1a;
+    --border-color: #333;
+    --text-color: #e0e0e0;
+    --text-muted: #aaa;
+    --text-secondary: #aaa;
+    --button-hover-bg: #2f2f2f;
+    --count-highlight-bg: #1a4771;
+    --count-highlight-color: #a8d1ff;
+    
+    /* Tab colors for dark mode */
+    --tab-bg: #2a2a2a;
+    --tab-border: #404040;
+    --tab-active-bg: #333333;
+    --tab-active-border: #555;
+    --tab-hover-color: #e0e0e0;
+}
+
 /* Base Styles */
 body {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #f5f5f5;
-    transition: background-color 0.3s ease;
-    color: #333;
+    background-color: var(--bg-color);
+    transition: background-color var(--transition-slow);
+    color: var(--text-color);
     overflow: hidden;
 }
 
@@ -25,15 +89,15 @@ body {
     width: 100%;
     max-width: 100%;
     margin: 0 auto;
-    background-color: #ffffff;
-    transition: all 0.3s ease;
+    background-color: var(--container-bg);
+    transition: all var(--transition-slow);
 }
 
 .header {
-    padding: 0.75rem 1.25rem;
-    color: #333;
-    background-color: #fafafa;
-    border-bottom: 1px solid #eee;
+    padding: var(--spacing-lg) var(--spacing-xxl);
+    color: var(--text-color);
+    background-color: var(--app-header-bg);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -60,78 +124,114 @@ body {
 /* Tab Bar Styles */
 .tab-bar {
     display: flex;
-    align-items: flex-end;
-    background-color: #f0f2f5;
-    padding: 0 0.75rem;
+    align-items: center;
+    background-color: var(--header-bg);
+    padding: var(--spacing-md) var(--spacing-xxl);
     min-height: 2.5rem;
     overflow: visible;
     position: relative;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .tabs-container {
     display: flex;
     flex: 1;
     overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0.125rem;
-    align-items: flex-end;
+    overflow-y: visible;
+    gap: 0.375rem;
+    align-items: center;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    padding: 0;
 }
 
 .tabs-container::-webkit-scrollbar {
     display: none;
 }
 
-.tab {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background-color: rgba(233, 236, 239, 0.6);
-    border: 1px solid rgba(222, 226, 230, 0.8);
-    border-bottom: none;
-    border-radius: 0.5rem 0.5rem 0 0;
-    cursor: pointer;
-    user-select: none;
-    min-width: 8rem;
-    max-width: 12rem;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
-    position: relative;
-    white-space: nowrap;
-    flex-shrink: 0;
-    opacity: 0.7;
-    color: rgba(51, 51, 51, 0.8);
+/* Tab Animations */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        max-width: 0;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    to {
+        opacity: 1;
+        max-width: var(--tab-max-width);
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: var(--tab-padding-horizontal);
+        padding-right: var(--tab-padding-horizontal);
+    }
 }
 
-.tab:not(.active) {
-    padding-right: 0.75rem; /* Remove extra space for close button on inactive tabs */
+@keyframes slideOutToLeft {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+        max-width: var(--tab-max-width);
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: var(--tab-padding-horizontal);
+        padding-right: var(--tab-padding-horizontal);
+    }
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+        max-width: 0;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
 }
 
-.tab:hover:not(.active) {
-    opacity: 0.9;
-    background-color: rgba(233, 236, 239, 0.8);
+@keyframes contentFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 }
 
-.tab.active {
-    background-color: #ffffff;
-    border-color: #dee2e6;
-    z-index: 2;
-    opacity: 1;
-    color: #333;
+@keyframes contentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Create seamless connection between active tab and content */
-.tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background-color: #ffffff;
-    z-index: 3;
+.tab.opening {
+    opacity: 0;
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    animation: slideInFromRight var(--transition-slow) ease-out forwards;
+}
+
+.tab.closing {
+    animation: slideOutToLeft 0.25s ease-in forwards;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+#page.switching-out {
+    animation: contentFadeOut var(--transition-fast) ease-in forwards;
+}
+
+#page.switching-in {
+    animation: contentFadeIn var(--transition-normal) ease-out forwards;
 }
 
 .tab-title {
@@ -152,29 +252,23 @@ body {
     font: inherit;
     color: inherit;
     width: 100%;
-    border: 1px solid #0066cc;
+    border: 1px solid var(--highlight-color);
     border-radius: 2px;
     padding: 1px 3px;
-    background-color: white;
-}
-
-body.dark-mode .tab-title.editing {
-    background-color: #2a2a2a;
-    border-color: #0066cc;
-    color: #e0e0e0;
+    background-color: var(--container-bg);
 }
 
 .tab-close {
     background: none;
     border: none;
     cursor: pointer;
-    color: #6c757d;
-    padding: 0.125rem;
-    border-radius: 0.25rem;
+    color: var(--text-secondary);
+    padding: var(--spacing-xs);
+    border-radius: var(--border-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all var(--transition-normal);
     font-size: 0.75rem;
     width: 1rem;
     height: 1rem;
@@ -187,47 +281,77 @@ body.dark-mode .tab-title.editing {
 }
 
 .tab-close:focus-visible {
-    outline: 2px solid #0066cc;
+    outline: 2px solid var(--highlight-color);
     outline-offset: 1px;
 }
 
-.add-tab-button {
-    background: none;
-    border: none;
+.add-tab-button, .more-button {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius-lg);
     cursor: pointer;
-    color: #6c757d;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
+    color: var(--text-secondary);
+    padding: 0.375rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
-    margin-left: 0.5rem;
+    transition: all var(--transition-normal);
     flex-shrink: 0;
+    width: var(--button-size);
+    height: var(--button-size);
+    opacity: 0.9;
 }
 
-.add-tab-button:hover {
-    background-color: #e9ecef;
-    color: #333;
+.add-tab-button {
+    margin-left: var(--spacing-sm);
 }
 
-.add-tab-button:focus-visible {
-    outline: 2px solid #0066cc;
+.add-tab-button:hover, .more-button:hover {
+    background-color: var(--container-bg);
+    border-color: #dee2e6;
+    color: #495057;
+    opacity: 1;
+}
+
+.add-tab-button:active, .more-button:active {
+    transform: scale(0.96);
+    transition-duration: var(--transition-fast);
+}
+
+.add-tab-button:focus-visible, .more-button:focus-visible {
+    outline: 2px solid var(--highlight-color);
     outline-offset: 2px;
 }
 
 main {
     flex: 1;
     display: flex;
-    border-top: 1px solid #dee2e6;
     position: relative;
     z-index: 1;
+}
+
+/* Footer Styles */
+.footer {
+    padding: 0 var(--spacing-xxl);
+    min-height: 2.5rem;
+    background-color: var(--header-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
 }
 
 #page {
     flex: 1;
     width: 100%;
-    padding: 1.25rem;
+    padding: var(--spacing-xxl);
     border: none;
     outline: none;
     resize: none;
@@ -237,49 +361,65 @@ main {
     color: inherit;
     touch-action: manipulation;
     content-visibility: auto;
+    transition: opacity var(--transition-fast) ease-out;
+}
+
+#page.switching {
+    opacity: 0.7;
 }
 
 /* Screen Mode Styles */
 body.fullscreen {
-    background-color: #ffffff;
+    background-color: var(--container-bg);
 }
 
 body.centered .container {
     max-width: 50rem;
     height: calc(100vh - 2.5rem);
-    margin: 1.25rem auto;
-    border-radius: 0.5rem;
-    box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.08);
+    margin: var(--spacing-xxl) auto;
+    border-radius: 8px;
+    box-shadow: 0 var(--spacing-sm) 1.5rem rgba(0, 0, 0, 0.08);
+    overflow: hidden; /* Ensures children respect border-radius */
+    transform: translateZ(0); /* Forces hardware acceleration for smoother rendering */
 }
 
 body.centered .header {
-    border-radius: 0.5rem 0.5rem 0 0;
+    border-radius: 8px 8px 0 0;
+}
+
+body.centered .footer {
+    border-radius: 0 0 8px 8px;
+}
+
+/* Dark mode shadow adjustment */
+body.dark-mode.centered .container {
+    box-shadow: 0 var(--spacing-sm) 1.5rem rgba(0, 0, 0, 0.2);
 }
 
 /* Button & Counter Styles */
-.header-button {
+.header-button, .footer-button {
     background: none;
     border: none;
     cursor: pointer;
-    color: #888;
-    padding: 0.25rem;
+    color: var(--text-muted);
+    padding: var(--spacing-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s ease;
-    border-radius: 0.25rem;
+    transition: color var(--transition-normal);
+    border-radius: var(--border-radius-sm);
 }
 
-.header-button:hover {
-    color: #333;
+.header-button:hover, .footer-button:hover {
+    color: var(--text-color);
 }
 
-.header-button:focus-visible {
-    outline: 2px solid #0066cc;
+.header-button:focus-visible, .footer-button:focus-visible {
+    outline: 2px solid var(--highlight-color);
     outline-offset: 2px;
 }
 
-.header-button:focus:not(:focus-visible) {
+.header-button:focus:not(:focus-visible), .footer-button:focus:not(:focus-visible) {
     outline: none;
 }
 
@@ -293,21 +433,21 @@ body.centered .header {
 }
 
 .count-display {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.8125rem;
     cursor: pointer;
     user-select: none;
-    padding: 0.125rem 0.25rem;
-    border-radius: 0.25rem;
-    transition: background-color 0.2s ease;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    transition: background-color var(--transition-normal);
 }
 
 .count-display:hover {
-    background-color: #f0f0f0;
+    background-color: var(--button-hover-bg);
 }
 
 .count-display:focus-visible {
-    outline: 2px solid #0066cc;
+    outline: 2px solid var(--highlight-color);
     outline-offset: 2px;
 }
 
@@ -316,155 +456,219 @@ body.centered .header {
 }
 
 .count-display.highlighted {
-    background-color: #e0f0ff;
-    color: #0066cc;
+    background-color: var(--count-highlight-bg);
+    color: var(--count-highlight-color);
     font-weight: 500;
 }
 
 .count-display.highlighted:hover {
-    background-color: #c8e5ff;
+    background-color: var(--count-highlight-bg);
+    filter: brightness(1.1);
 }
 
 .status {
-    color: #888;
+    color: var(--text-muted);
     font-size: 0.75rem;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-slow);
 }
 
 .status.visible {
     opacity: 1;
 }
 
-/* Dark Mode Styles */
-body.dark-mode {
-    background-color: #1f1f1f;
-    color: #e0e0e0;
-}
-
-body.dark-mode.fullscreen {
-    background-color: #121212;
-}
-
-body.dark-mode .container {
-    background-color: #121212;
-}
-
-body.dark-mode .header {
-    background-color: #1a1a1a;
-    border-bottom: 1px solid #333;
-    color: #e0e0e0;
-}
-
-body.dark-mode .count-display {
-    color: #aaa;
-}
-
-body.dark-mode .count-display:hover {
-    background-color: #2f2f2f;
-}
-
-body.dark-mode #page {
-    color: #e0e0e0;
-}
-
-body.dark-mode .status {
-    color: #aaa;
-}
-
-body.dark-mode .header-button {
-    color: #aaa;
-}
-
-body.dark-mode .header-button:hover {
-    color: #e0e0e0;
-}
-
-body.dark-mode.centered .container {
-    box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.2);
-}
-
-body.dark-mode .count-display.highlighted {
-    background-color: #1a4771;
-    color: #a8d1ff;
-}
-
-body.dark-mode .count-display.highlighted:hover {
-    background-color: #235892;
-}
-
-/* Dark mode tab styles */
-body.dark-mode .tab-bar {
-    background-color: #242424;
-}
-
-body.dark-mode .tab {
-    background-color: rgba(58, 58, 58, 0.6);
-    border-color: rgba(85, 85, 85, 0.8);
-    color: rgba(224, 224, 224, 0.8);
-    opacity: 0.7;
-}
-
-body.dark-mode .tab:hover:not(.active) {
+/* Tab Styles */
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius-lg);
+    cursor: pointer;
+    user-select: none;
+    min-width: 6rem;
+    max-width: 10rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    position: relative;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    height: var(--button-size);
     opacity: 0.9;
-    background-color: rgba(58, 58, 58, 0.8);
+    transition: all var(--transition-normal);
 }
 
-body.dark-mode .tab.active {
-    background-color: #121212;
-    border-color: #555;
-    color: #e0e0e0;
+.tab:first-child {
+    margin-left: 0;
+}
+
+.tab:last-child {
+    margin-right: 0;
+}
+
+.tab:not(.active) {
+    padding-right: 0.75rem;
+    background-color: #f8f9fa;
+}
+
+.tab:hover:not(.active) {
+    background-color: var(--container-bg);
+    border-color: #dee2e6;
+    color: #495057;
     opacity: 1;
 }
 
-body.dark-mode .tab.active::after {
-    background-color: #121212;
+.tab.active {
+    background-color: var(--container-bg);
+    border-color: #dee2e6;
+    color: var(--text-color);
+    opacity: 1;
+    z-index: 10;
+    height: var(--button-size);
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
 }
 
-body.dark-mode main {
-    border-top-color: #555;
+/* Dark mode tab styles */
+body.dark-mode .tab {
+    background-color: var(--tab-bg, #2a2a2a);
+    border-color: var(--tab-border, #404040);
+    color: var(--text-muted);
 }
 
-body.dark-mode .tab-close {
-    color: #aaa;
+body.dark-mode .tab:hover:not(.active) {
+    background-color: var(--tab-active-bg, #333333);
+    border-color: var(--tab-active-border, #555);
+    color: var(--tab-hover-color);
+    opacity: 1;
 }
 
-body.dark-mode .tab-close:hover {
-    background-color: #dc3545;
-    color: white;
+body.dark-mode .tab.active {
+    background-color: var(--tab-active-bg, #333333);
+    border-color: var(--tab-active-border, #555);
+    color: #ffffff;
+    opacity: 1;
 }
 
-body.dark-mode .add-tab-button {
-    color: #aaa;
+/* Dark mode button styles to match tabs */
+body.dark-mode .add-tab-button, 
+body.dark-mode .more-button {
+    background-color: var(--tab-bg, #2a2a2a);
+    border-color: var(--tab-border, #404040);
+    color: var(--text-muted);
 }
 
-body.dark-mode .add-tab-button:hover {
-    background-color: #3a3a3a;
-    color: #e0e0e0;
+body.dark-mode .add-tab-button:hover, 
+body.dark-mode .more-button:hover {
+    background-color: var(--tab-active-bg, #333333);
+    border-color: var(--tab-active-border, #555);
+    color: var(--tab-hover-color);
+    opacity: 1;
+}
+
+/* More Button and Dropdown Styles */
+.more-menu-container {
+    position: relative;
+    margin-left: var(--spacing-sm);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + var(--spacing-md));
+    right: 0;
+    background-color: var(--container-bg);
+    border: 1px solid #dee2e6;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 var(--spacing-md) 1rem rgba(0, 0, 0, 0.15);
+    padding: var(--spacing-md) 0;
+    min-width: 10rem;
+    z-index: 10;
+    display: none;
+}
+
+.dropdown-menu.show {
+    display: block;
+    animation: dropdownFadeIn var(--transition-normal) ease-out forwards;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-0.625rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: 0.625rem 1rem;
+    color: #495057;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--transition-normal);
+}
+
+.dropdown-item:hover {
+    background-color: var(--button-hover-bg);
+    color: var(--text-color);
+}
+
+.dropdown-item:active {
+    background-color: #e9ecef;
+}
+
+.dropdown-item:focus-visible {
+    outline: none;
+    background-color: #e9ecef;
+}
+
+/* Dark Mode Dropdown Styles */
+body.dark-mode .dropdown-menu {
+    background-color: #222;
+    border-color: #444;
+    box-shadow: 0 var(--spacing-md) 1rem rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .dropdown-item {
+    color: var(--text-color);
+}
+
+body.dark-mode .dropdown-item:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+}
+
+body.dark-mode .dropdown-item:active {
+    background-color: #333;
 }
 
 /* PWA Installation prompt */
 #installPrompt {
     position: fixed;
-    bottom: 1.25rem;
+    bottom: var(--spacing-xxl);
     left: 50%;
     transform: translateX(-50%);
-    background-color: #fff;
-    padding: 0.75rem 1.25rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+    background-color: var(--container-bg);
+    padding: var(--spacing-lg) var(--spacing-xxl);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 var(--spacing-sm) var(--spacing-lg) rgba(0, 0, 0, 0.15);
     display: none;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--spacing-lg);
     z-index: 100;
     max-width: 90%;
     width: 20rem;
-}
-
-body.dark-mode #installPrompt {
-    background-color: #2a2a2a;
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
-    color: #e0e0e0;
 }
 
 #installPrompt p {
@@ -474,14 +678,14 @@ body.dark-mode #installPrompt {
 }
 
 #installPrompt button {
-    background: #0066cc;
+    background: var(--highlight-color);
     color: white;
     border: none;
     padding: 0.375rem 0.75rem;
-    border-radius: 0.25rem;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
     font-size: 0.8125rem;
-    transition: background-color 0.2s ease;
+    transition: background-color var(--transition-normal);
 }
 
 #installPrompt button:hover {
@@ -495,27 +699,24 @@ body.dark-mode #installPrompt {
 
 #installPrompt .close {
     background: none;
-    color: #888;
+    color: var(--text-muted);
     font-size: 1.125rem;
     padding: 0;
     line-height: 1;
-    transition: color 0.2s ease;
+    transition: color var(--transition-normal);
 }
 
 #installPrompt .close:hover {
-    color: #555;
-}
-
-body.dark-mode #installPrompt .close {
-    color: #aaa;
-}
-
-body.dark-mode #installPrompt .close:hover {
-    color: #ddd;
+    color: var(--text-color);
 }
 
 /* Media Queries */
 @media (max-width: 600px) {
+    :root {
+        --tab-max-width: 8rem;
+        --tab-padding-horizontal: var(--spacing-md);
+    }
+    
     body.centered .container {
         height: 100vh;
         margin: 0;
@@ -528,25 +729,48 @@ body.dark-mode #installPrompt .close:hover {
     }
     
     .tab-bar {
-        padding: 0 0.5rem;
+        padding: 0.375rem 0.75rem;
         min-height: 2.25rem;
     }
     
+    .tabs-container {
+        gap: var(--spacing-sm);
+    }
+    
     .tab {
-        min-width: 6rem;
-        max-width: 10rem;
-        padding: 0.375rem 0.5rem;
-        font-size: 0.8125rem;
+        min-width: 5rem;
+        max-width: var(--tab-max-width);
+        padding: var(--spacing-sm) var(--tab-padding-horizontal);
+        font-size: 0.75rem;
+        height: 1.625rem;
+        border-radius: var(--border-radius-md);
+        gap: var(--spacing-sm);
+    }
+    
+    .tab:not(.active) {
+        padding-right: var(--tab-padding-horizontal);
+    }
+    
+    .tab.active {
+        height: 1.625rem;
+        padding: var(--spacing-sm) var(--tab-padding-horizontal);
+    }
+    
+    /* Mobile tabs use base animations with CSS variables */
+    
+    .add-tab-button, .more-button {
+        padding: var(--spacing-sm);
+        width: 1.625rem;
+        height: 1.625rem;
+        border-radius: var(--border-radius-md);
     }
     
     .add-tab-button {
-        padding: 0.375rem;
-        margin-left: 0.25rem;
+        margin-left: var(--spacing-xs);
     }
     
     #page {
         padding: 1rem;
-        font-size: 1rem;
     }
     
     .controls {
@@ -554,7 +778,7 @@ body.dark-mode #installPrompt .close:hover {
     }
     
     .header-button {
-        padding: 0.5rem;
+        padding: var(--spacing-md);
     }
     
     .icon {
@@ -563,14 +787,32 @@ body.dark-mode #installPrompt .close:hover {
     
     .count-display {
         font-size: 0.875rem;
-        padding: 0.25rem 0.375rem;
+        padding: var(--spacing-sm) 0.375rem;
+    }
+    
+    .footer {
+        padding: 0 1rem;
+        min-height: 2.25rem;
+    }
+    
+    .footer-button {
+        padding: var(--spacing-md);
+    }
+    
+    .dropdown-menu {
+        min-width: 9rem;
     }
 }
 
 /* Additional media queries for smaller devices */
 @media (max-width: 380px) {
+    :root {
+        --tab-max-width: 6rem;
+        --tab-padding-horizontal: 0.375rem;
+    }
+    
     .header {
-        padding: 0.5rem 0.75rem;
+        padding: var(--spacing-md) 0.75rem;
     }
     
     .header h1 {
@@ -582,13 +824,38 @@ body.dark-mode #installPrompt .close:hover {
     }
     
     .tab-bar {
-        padding: 0 0.375rem;
+        padding: var(--spacing-sm) var(--spacing-md);
+        min-height: 2rem;
+    }
+    
+    .tabs-container {
+        gap: 0.1875rem;
     }
     
     .tab {
-        min-width: 5rem;
-        max-width: 8rem;
-        padding: 0.25rem 0.375rem;
+        min-width: 4rem;
+        max-width: var(--tab-max-width);
+        padding: 0.1875rem var(--tab-padding-horizontal);
+        height: 1.5rem;
+        border-radius: var(--border-radius-sm);
+        font-size: 0.6875rem;
+        gap: 0.1875rem;
+    }
+    
+    .tab:not(.active) {
+        padding-right: var(--tab-padding-horizontal);
+    }
+    
+    .tab.active {
+        height: 1.5rem;
+        padding: 0.1875rem var(--tab-padding-horizontal);
+    }
+    
+    .add-tab-button, .more-button {
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0.1875rem;
+        border-radius: var(--border-radius-sm);
     }
     
     .count-display {
@@ -598,6 +865,22 @@ body.dark-mode #installPrompt .close:hover {
     #page {
         padding: 0.75rem;
     }
+    
+    .footer {
+        padding: 0 0.75rem;
+        min-height: 2.25rem;
+    }
+    
+    .dropdown-menu {
+        min-width: 8rem;
+    }
+    
+    .dropdown-item {
+        padding: var(--spacing-md) 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Small mobile tabs use base animations with CSS variables */
 }
 
 /* Landscape orientation */
@@ -612,14 +895,43 @@ body.dark-mode #installPrompt .close:hover {
     
     .tab-bar {
         min-height: 2rem;
-        padding: 0 0.5rem;
+        padding: var(--spacing-sm) 0.75rem;
+    }
+    
+    .tabs-container {
+        gap: 0.1875rem;
     }
     
     .tab {
-        padding: 0.25rem 0.5rem;
+        padding: 0.1875rem var(--spacing-md);
+        height: 1.5rem;
+        border-radius: var(--border-radius-sm);
+        font-size: 0.75rem;
+        gap: 0.1875rem;
+    }
+    
+    .tab:not(.active) {
+        padding-right: var(--spacing-md);
+    }
+    
+    .tab.active {
+        height: 1.5rem;
+        padding: 0.1875rem var(--spacing-md);
+    }
+    
+    .add-tab-button, .more-button {
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0.1875rem;
+        border-radius: var(--border-radius-sm);
     }
     
     #page {
         padding: 0.625rem 1rem;
+    }
+    
+    .footer {
+        padding: 0 1rem;
+        min-height: 2rem;
     }
 } 

@@ -1,4 +1,24 @@
 (() => {
+    // Add logging utility to conditionally show logs only in development
+    const log = {
+        isDev: () => location.hostname === 'localhost' || location.hostname === '127.0.0.1',
+        error: (message, error) => {
+            if (log.isDev() || message.includes('Critical')) {
+                console.error(message, error);
+            }
+        },
+        warn: (message) => {
+            if (log.isDev()) {
+                console.warn(message);
+            }
+        },
+        info: (message, data) => {
+            if (log.isDev()) {
+                console.log(message, data);
+            }
+        }
+    };
+
     // Constants
     const STORAGE_KEYS = {
         TABS: 'blank-page-tabs',
@@ -39,6 +59,11 @@
         closePromptButton: document.getElementById('closePrompt'),
         tabsContainer: document.getElementById('tabsContainer'),
         addTabButton: document.getElementById('addTabButton'),
+        moreButton: document.getElementById('moreButton'),
+        moreDropdown: document.getElementById('moreDropdown'),
+        clearAllButton: document.getElementById('clearAllButton'),
+        importButton: document.getElementById('importButton'),
+        exportButton: document.getElementById('exportButton'),
         icons: {
             spellcheckOn: document.getElementById('spellcheckOnIcon'),
             spellcheckOff: document.getElementById('spellcheckOffIcon'),
@@ -60,16 +85,31 @@
         statusVisibilityTimeout: null,
         tabs: [],
         activeTabId: null,
-        nextTabId: 1
+        nextTabId: 1,
+        contentModified: false, // Track whether content has been modified since last save
+        isProcessingTabOperation: false, // Flag to prevent input processing during tab operations
+        backupInterval: null, // For periodic backups
+        lastTextLength: 0, // Cache for optimizing updateCount performance
+        lastDisplayedCountText: '' // Cache to track when count display needs updating
     };
     
     // Tab Management
     const tabManager = {
         createTab: (title = 'Untitled', content = '', setActive = true) => {
+            // Set flag to prevent input processing during tab operation
+            state.isProcessingTabOperation = true;
+            
             // Save current tab content before creating new tab
             if (state.activeTabId) {
+                log.info(`Creating new tab, saving current tab ${state.activeTabId} content first`);
                 tabManager.saveCurrentTabContent();
             }
+            
+            // Clean up any existing animations before creating new tab
+            document.querySelectorAll('.tab').forEach(tabEl => {
+                tabEl.classList.remove('opening', 'closing', 'activating', 'deactivating', 'switching-in');
+            });
+            elements.page.classList.remove('switching-out', 'switching-in');
             
             const tab = {
                 id: state.nextTabId++,
@@ -77,18 +117,45 @@
                 content: content,
                 lastModified: Date.now(),
                 isAutoTitle: title === 'Untitled', // Track if title is auto-generated
-                spellcheck: true // Default spellcheck enabled for new tabs
+                spellcheck: true, // Default spellcheck enabled for new tabs
+                countMode: COUNT_MODES.CHARACTERS, // Default count mode for new tabs
+                isOpening: true // Mark this tab as needing opening animation
             };
             
+            // Always add new tabs to the end to ensure natural slide-in animation
             state.tabs.push(tab);
+            log.info(`Created new tab ${tab.id} with title "${tab.title}" and content length: ${tab.content.length}`);
             
             if (setActive) {
+                // Temporarily disable input event handling to prevent race conditions
+                const previousActiveTabId = state.activeTabId;
+                log.info(`Switching from tab ${previousActiveTabId} to new tab ${tab.id}`);
+                
+                // Set the new tab as active and update textarea atomically
                 state.activeTabId = tab.id;
                 elements.page.value = tab.content; // Set textarea to new tab content immediately
                 ui.applySpellcheck(tab.spellcheck); // Apply spellcheck setting for this tab
+                state.countMode = tab.countMode; // Apply count mode setting for this tab
+                
+                // Ensure any pending input events are cleared
+                state.contentModified = false;
+                log.info(`Set textarea to new tab content: "${tab.content}"`);
             }
             
             tabManager.renderTabs();
+            
+            // Remove the animation flag after animation completes
+            setTimeout(() => {
+                tab.isOpening = false;
+                const tabElement = document.querySelector(`[data-tab-id="${tab.id}"]`);
+                if (tabElement) {
+                    tabElement.classList.remove('opening');
+                }
+                
+                // Clear the processing flag after all operations are complete
+                state.isProcessingTabOperation = false;
+            }, 300);
+            
             tabManager.saveTabs();
             
             if (setActive) {
@@ -106,43 +173,183 @@
                 return;
             }
             
+            // Set flag to prevent input processing during tab operation
+            state.isProcessingTabOperation = true;
+            
             const tabIndex = state.tabs.findIndex(tab => tab.id === tabId);
-            if (tabIndex === -1) return;
+            if (tabIndex === -1) {
+                state.isProcessingTabOperation = false;
+                return;
+            }
             
-            // Save current content before removing
+            const tab = state.tabs[tabIndex];
+            log.info(`Removing tab ${tabId} (${tab.title}) with content length: ${tab.content.length}`);
+            log.info(`Current active tab: ${state.activeTabId}, current textarea content length: ${elements.page.value.length}`);
+            
+            // Add confirmation dialog for non-empty tabs
+            if (tab.content.trim() !== '') {
+                const confirmClose = confirm(`Are you sure you want to close "${tab.title}"? This cannot be undone.`);
+                if (!confirmClose) {
+                    state.isProcessingTabOperation = false;
+                    return;
+                }
+            }
+            
+            // Only save current content if we're closing the active tab
+            // If we're closing a non-active tab, we don't want to save the current content to it
             if (state.activeTabId === tabId) {
+                log.info(`Saving current content before removing active tab ${tabId}`);
                 tabManager.saveCurrentTabContent();
+            } else {
+                log.info(`Not saving content because removing non-active tab ${tabId} (active: ${state.activeTabId})`);
             }
             
-            state.tabs.splice(tabIndex, 1);
-            
-            // Switch to another tab if the active tab was closed
-            if (state.activeTabId === tabId) {
-                const newActiveTab = state.tabs[Math.max(0, tabIndex - 1)];
-                state.activeTabId = newActiveTab.id;
-                tabManager.switchToTab(newActiveTab.id);
+            // Add closing animation
+            const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+            if (tabElement) {
+                tabElement.classList.add('closing');
+                
+                // Wait for animation to complete before removing
+                setTimeout(() => {
+                    // Remove from state
+                    state.tabs.splice(tabIndex, 1);
+                    log.info(`Removed tab ${tabId} from state, remaining tabs: ${state.tabs.map(t => `${t.id}(${t.title})`).join(', ')}`);
+                    
+                    // Switch to another tab if the active tab was closed
+                    if (state.activeTabId === tabId) {
+                        const newActiveTab = state.tabs[Math.max(0, tabIndex - 1)];
+                        log.info(`Switching to tab ${newActiveTab.id} (${newActiveTab.title}) with content length: ${newActiveTab.content.length}`);
+                        state.activeTabId = newActiveTab.id;
+                        
+                        // Don't call switchToTab here, just update the UI directly
+                        // to avoid any potential content confusion
+                        elements.page.value = newActiveTab.content || '';
+                        ui.applySpellcheck(newActiveTab.spellcheck || true);
+                        state.countMode = newActiveTab.countMode || COUNT_MODES.CHARACTERS;
+                        state.contentModified = false;
+                        log.info(`Set textarea to content: "${newActiveTab.content}"`);
+                        
+                        try {
+                            localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, newActiveTab.id);
+                        } catch (error) {
+                            console.error('Error saving active tab:', error);
+                        }
+                        
+                        app.updateCount();
+                    }
+                    
+                    tabManager.renderTabs();
+                    tabManager.saveTabs();
+                    
+                    // Clear the processing flag after all operations are complete
+                    state.isProcessingTabOperation = false;
+                }, 250);
+            } else {
+                // Fallback if element not found
+                state.tabs.splice(tabIndex, 1);
+                log.info(`Removed tab ${tabId} from state (fallback), remaining tabs: ${state.tabs.map(t => `${t.id}(${t.title})`).join(', ')}`);
+                
+                if (state.activeTabId === tabId) {
+                    const newActiveTab = state.tabs[Math.max(0, tabIndex - 1)];
+                    log.info(`Switching to tab ${newActiveTab.id} (${newActiveTab.title}) with content length: ${newActiveTab.content.length} (fallback)`);
+                    state.activeTabId = newActiveTab.id;
+                    
+                    // Direct update without calling switchToTab
+                    elements.page.value = newActiveTab.content || '';
+                    ui.applySpellcheck(newActiveTab.spellcheck || true);
+                    state.countMode = newActiveTab.countMode || COUNT_MODES.CHARACTERS;
+                    state.contentModified = false;
+                    log.info(`Set textarea to content: "${newActiveTab.content}" (fallback)`);
+                    
+                    try {
+                        localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, newActiveTab.id);
+                    } catch (error) {
+                        console.error('Error saving active tab:', error);
+                    }
+                    
+                    app.updateCount();
+                }
+                
+                tabManager.renderTabs();
+                tabManager.saveTabs();
+                
+                // Clear the processing flag after all operations are complete
+                state.isProcessingTabOperation = false;
             }
-            
-            tabManager.renderTabs();
-            tabManager.saveTabs();
         },
         
         switchToTab: (tabId) => {
+            // Set flag to prevent input processing during tab operation
+            state.isProcessingTabOperation = true;
+            
             // Save current tab content before switching
             if (state.activeTabId && state.activeTabId !== tabId) {
                 tabManager.saveCurrentTabContent();
+                // Reset modification flag after saving when switching tabs
+                state.contentModified = false;
             }
             
             const tab = state.tabs.find(t => t.id === tabId);
-            if (!tab) return;
+            if (!tab) {
+                state.isProcessingTabOperation = false;
+                return;
+            }
             
-            state.activeTabId = tabId;
-            elements.page.value = tab.content;
+            const isTabChange = state.activeTabId !== tabId;
+            if (!isTabChange) {
+                state.isProcessingTabOperation = false;
+                return; // No need to switch if it's the same tab
+            }
             
-            // Apply tab-specific spellcheck setting
-            ui.applySpellcheck(tab.spellcheck);
+            const previousActiveTabId = state.activeTabId;
             
-            tabManager.renderTabs();
+            // Clean up all existing animation classes first
+            document.querySelectorAll('.tab').forEach(tabEl => {
+                tabEl.classList.remove('opening', 'closing', 'activating', 'deactivating', 'switching-in');
+            });
+            elements.page.classList.remove('switching-out', 'switching-in');
+            
+            // Start content fade out animation
+            elements.page.classList.add('switching-out');
+            
+            // After content fades out, switch content and start fade in
+            setTimeout(() => {
+                // Atomically switch the active tab and content
+                state.activeTabId = tabId;
+                
+                // Ensure we have the content (defensive programming)
+                if (tab.content === undefined) {
+                    tab.content = '';
+                }
+                
+                elements.page.value = tab.content;
+                
+                // Reset content modification flag to prevent accidental saves to wrong tab
+                state.contentModified = false;
+                
+                // Apply tab-specific spellcheck setting
+                ui.applySpellcheck(tab.spellcheck);
+                
+                // Apply tab-specific count mode setting
+                state.countMode = tab.countMode || COUNT_MODES.CHARACTERS;
+                
+                // Update tab classes without animations first
+                tabManager.renderTabs();
+                
+                // Start content fade in
+                elements.page.classList.remove('switching-out');
+                elements.page.classList.add('switching-in');
+                
+                // Clean up content animation class
+                setTimeout(() => {
+                    elements.page.classList.remove('switching-in');
+                    
+                    // Clear the processing flag after all operations are complete
+                    state.isProcessingTabOperation = false;
+                }, 200);
+                
+            }, 150); // Wait for content fade out to complete
+            
             app.updateCount();
             
             try {
@@ -151,8 +358,10 @@
                 console.error('Error saving active tab:', error);
             }
             
-            // Focus the textarea
-            elements.page.focus();
+            // Focus the textarea after all animations
+            setTimeout(() => {
+                elements.page.focus();
+            }, 200);
         },
         
         saveCurrentTabContent: () => {
@@ -160,8 +369,32 @@
             
             const tab = state.tabs.find(t => t.id === state.activeTabId);
             if (tab) {
-                tab.content = elements.page.value;
+                // Only update if the tab actually exists and content has changed
+                const currentContent = elements.page.value;
+                
+                // Double-check we're saving to the correct tab
+                if (tab.id !== state.activeTabId) {
+                    log.error(`Critical: Tab ID mismatch! Attempting to save to tab ${tab.id} but activeTabId is ${state.activeTabId}`);
+                    return;
+                }
+                
+                // Only log in development mode
+                log.info(`Saving content for tab ${tab.id} (${tab.title})`, 
+                    currentContent.length > 100 ? 
+                    currentContent.substring(0, 100) + '...' : 
+                    currentContent);
+                
+                tab.content = currentContent;
                 tab.lastModified = Date.now();
+                
+                // Immediately save to localStorage after updating tab content
+                try {
+                    tabManager.saveTabs();
+                } catch (error) {
+                    log.error('Error saving tab content:', error);
+                }
+            } else {
+                log.warn(`Attempted to save content for non-existent tab ID: ${state.activeTabId}`);
             }
         },
         
@@ -177,62 +410,133 @@
         },
         
         renderTabs: () => {
-            elements.tabsContainer.innerHTML = '';
+            // Get existing tab elements
+            const existingTabElements = Array.from(elements.tabsContainer.querySelectorAll('.tab'));
+            const existingTabIds = existingTabElements.map(el => parseInt(el.dataset.tabId, 10));
             
-            state.tabs.forEach(tab => {
-                const tabElement = document.createElement('div');
-                tabElement.className = `tab ${tab.id === state.activeTabId ? 'active' : ''}`;
-                tabElement.dataset.tabId = tab.id;
-                
-                const titleElement = document.createElement('span');
-                titleElement.className = 'tab-title';
-                titleElement.textContent = tab.title;
-                titleElement.title = tab.title;
-                
-                const closeButton = document.createElement('button');
-                closeButton.className = 'tab-close';
-                const closeIcon = document.createElement('i');
-                closeIcon.className = 'fa-solid fa-xmark';
-                closeIcon.setAttribute('aria-hidden', 'true');
-                closeButton.appendChild(closeIcon);
-                closeButton.title = 'Close tab';
-                closeButton.setAttribute('aria-label', `Close ${tab.title}`);
-                
-                // Only show close button for active tab
-                if (tab.id !== state.activeTabId) {
-                    closeButton.style.display = 'none';
+            // Remove tabs that no longer exist and clean up their event listeners
+            existingTabElements.forEach(tabElement => {
+                const tabId = parseInt(tabElement.dataset.tabId, 10);
+                if (!isNaN(tabId) && !state.tabs.find(tab => tab.id === tabId)) {
+                    // Clean up event listeners to prevent memory leaks
+                    const clickHandlers = tabElement.cloneNode(true);
+                    tabElement.parentNode.replaceChild(clickHandlers, tabElement);
+                    clickHandlers.remove();
+                } else if (isNaN(tabId)) {
+                    // Remove invalid tab elements
+                    tabElement.remove();
                 }
+            });
+            
+            // Add or update tabs
+            state.tabs.forEach((tab, index) => {
+                let tabElement = elements.tabsContainer.querySelector(`[data-tab-id="${tab.id}"]`);
                 
-                // Tab click event - always switches to the tab
-                tabElement.addEventListener('click', (e) => {
-                    if (e.target === closeButton || e.target.parentElement === closeButton || e.target === closeIcon) {
-                        return; // Let close button handle this
+                if (!tabElement) {
+                    // Create new tab element
+                    tabElement = document.createElement('div');
+                    tabElement.className = 'tab';
+                    tabElement.dataset.tabId = tab.id;
+                    
+                    // Set initial state for opening animation before adding to DOM
+                    if (tab.isOpening) {
+                        tabElement.style.opacity = '0';
+                        tabElement.style.maxWidth = '0';
+                        tabElement.style.paddingLeft = '0';
+                        tabElement.style.paddingRight = '0';
+                        tabElement.style.overflow = 'hidden';
                     }
                     
-                    // If clicking on title of active tab and it's a double-click, handle renaming
-                    if (e.target === titleElement && e.detail === 2 && tab.id === state.activeTabId) {
+                    const titleElement = document.createElement('span');
+                    titleElement.className = 'tab-title';
+                    
+                    const closeButton = document.createElement('button');
+                    closeButton.className = 'tab-close';
+                    const closeIcon = document.createElement('i');
+                    closeIcon.className = 'fa-solid fa-xmark';
+                    closeIcon.setAttribute('aria-hidden', 'true');
+                    closeButton.appendChild(closeIcon);
+                    closeButton.title = 'Close tab';
+                    
+                    // Tab click event - always switches to the tab
+                    const tabClickHandler = (e) => {
+                        if (e.target === closeButton || e.target.parentElement === closeButton || e.target === closeIcon) {
+                            return; // Let close button handle this
+                        }
+                        
+                        const titleElement = tabElement.querySelector('.tab-title');
+                        // If clicking on title of active tab and it's a double-click, handle renaming
+                        if (e.target === titleElement && e.detail === 2 && tab.id === state.activeTabId) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            tabManager.startRenaming(tab.id, titleElement);
+                            return;
+                        }
+                        
+                        // Switch to this tab
+                        tabManager.switchToTab(tab.id);
+                    };
+                    
+                    // Close button event (only works for active tab)
+                    const closeClickHandler = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        tabManager.startRenaming(tab.id, titleElement);
-                        return;
+                        tabManager.removeTab(tab.id);
+                    };
+                    
+                    // Store references to handlers for potential cleanup
+                    tabElement._clickHandler = tabClickHandler;
+                    closeButton._clickHandler = closeClickHandler;
+                    
+                    tabElement.addEventListener('click', tabClickHandler);
+                    closeButton.addEventListener('click', closeClickHandler);
+                    
+                    tabElement.appendChild(titleElement);
+                    tabElement.appendChild(closeButton);
+                    
+                    // Insert at correct position
+                    const nextTabElement = elements.tabsContainer.children[index];
+                    if (nextTabElement) {
+                        elements.tabsContainer.insertBefore(tabElement, nextTabElement);
+                    } else {
+                        elements.tabsContainer.appendChild(tabElement);
                     }
                     
-                    // Switch to this tab
-                    tabManager.switchToTab(tab.id);
-                });
-                
-                // Close button event (only works for active tab)
-                closeButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (tab.id === state.activeTabId) {
-                        tabManager.removeTab(tab.id);
+                    // Apply opening animation for new tabs after a small delay to ensure DOM is ready
+                    if (tab.isOpening) {
+                        // Use requestAnimationFrame to ensure the element is painted with initial styles
+                        requestAnimationFrame(() => {
+                            // Clear inline styles and let CSS animation take over
+                            tabElement.style.opacity = '';
+                            tabElement.style.maxWidth = '';
+                            tabElement.style.paddingLeft = '';
+                            tabElement.style.paddingRight = '';
+                            tabElement.style.overflow = '';
+                            tabElement.classList.add('opening');
+                        });
                     }
-                });
+                }
                 
-                tabElement.appendChild(titleElement);
-                tabElement.appendChild(closeButton);
-                elements.tabsContainer.appendChild(tabElement);
+                // Update tab content and state
+                const titleElement = tabElement.querySelector('.tab-title');
+                const closeButton = tabElement.querySelector('.tab-close');
+                
+                if (titleElement && !titleElement.classList.contains('editing')) {
+                    titleElement.textContent = tab.title;
+                    titleElement.title = tab.title;
+                }
+                
+                if (closeButton) {
+                    closeButton.setAttribute('aria-label', `Close ${tab.title}`);
+                    // Only show close button for active tab
+                    closeButton.style.display = tab.id === state.activeTabId ? '' : 'none';
+                }
+                
+                // Update active state without triggering animations
+                const isActive = tab.id === state.activeTabId;
+                if (isActive !== tabElement.classList.contains('active')) {
+                    tabElement.classList.toggle('active', isActive);
+                }
             });
         },
         
@@ -269,9 +573,42 @@
         
         saveTabs: () => {
             try {
+                // Validate state before saving
+                if (!Array.isArray(state.tabs)) {
+                    throw new Error('state.tabs is not an array');
+                }
+                
+                // Validate each tab before saving
+                const validTabs = state.tabs.filter(tab => {
+                    if (!tab || typeof tab !== 'object') {
+                        console.warn('Skipping invalid tab object:', tab);
+                        return false;
+                    }
+                    if (typeof tab.id !== 'number') {
+                        console.warn('Skipping tab with invalid ID:', tab);
+                        return false;
+                    }
+                    if (typeof tab.title !== 'string') {
+                        console.warn('Skipping tab with invalid title:', tab);
+                        return false;
+                    }
+                    if (typeof tab.content !== 'string') {
+                        console.warn('Skipping tab with invalid content:', tab);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                // Warn if we're losing tabs due to validation
+                if (validTabs.length !== state.tabs.length) {
+                    const lostCount = state.tabs.length - validTabs.length;
+                    console.warn(`Warning: ${lostCount} invalid tabs were not saved`);
+                    ui.showStatus(`Warning: ${lostCount} invalid tabs not saved`);
+                }
+                
                 const tabsData = {
-                    tabs: state.tabs,
-                    nextTabId: state.nextTabId
+                    tabs: validTabs,
+                    nextTabId: state.nextTabId || 1
                 };
                 const dataString = JSON.stringify(tabsData);
                 
@@ -281,7 +618,21 @@
                     return;
                 }
                 
+                // Verify JSON can be parsed back (corruption check)
+                try {
+                    JSON.parse(dataString);
+                } catch (jsonError) {
+                    throw new Error('Generated JSON is invalid: ' + jsonError.message);
+                }
+                
                 localStorage.setItem(STORAGE_KEYS.TABS, dataString);
+                
+                // Verify the save actually worked
+                const verification = localStorage.getItem(STORAGE_KEYS.TABS);
+                if (!verification || verification !== dataString) {
+                    throw new Error('Save verification failed - data not persisted correctly');
+                }
+                
             } catch (error) {
                 if (error.name === 'QuotaExceededError') {
                     ui.showStatus('Storage quota exceeded');
@@ -299,12 +650,12 @@
                         localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(reducedData));
                         ui.showStatus('Saved with truncated content');
                     } catch (secondError) {
-                        console.error('Failed to save even truncated data:', secondError);
+                        log.error('Failed to save even truncated data:', secondError);
                         ui.showStatus('Failed to save');
                     }
                 } else {
-                    console.error('Error saving tabs:', error);
-                    ui.showStatus('Error saving');
+                    log.error('Error saving tabs:', error);
+                    ui.showStatus('Error saving: ' + (error.message || 'Unknown error'));
                 }
             }
         },
@@ -318,31 +669,113 @@
                 const tabsJson = localStorage.getItem(STORAGE_KEYS.TABS);
                 
                 if (tabsJson) {
-                    const tabsData = JSON.parse(tabsJson);
-                    state.tabs = tabsData.tabs || [];
-                    state.nextTabId = tabsData.nextTabId || 1;
-                    
-                    // Ensure all tabs have required properties (for backward compatibility)
-                    state.tabs.forEach(tab => {
-                        if (tab.isAutoTitle === undefined) {
-                            tab.isAutoTitle = tab.title === 'Untitled' || tab.title.startsWith('Document ');
+                    try {
+                        const tabsData = JSON.parse(tabsJson);
+                        
+                        // Validate the loaded data structure
+                        if (!tabsData || typeof tabsData !== 'object') {
+                            throw new Error('Invalid tabs data structure');
                         }
-                        if (tab.spellcheck === undefined) {
-                            // Use legacy global setting or default to true
-                            tab.spellcheck = legacySpellcheck !== null ? legacySpellcheck === 'true' : true;
+                        
+                        // Ensure tabs is an array
+                        if (!Array.isArray(tabsData.tabs)) {
+                            throw new Error('Tabs data is not an array');
                         }
-                    });
-                    
-                    // Migrate legacy content if tabs exist but first tab is empty
-                    if (legacyContent && state.tabs.length > 0 && !state.tabs[0].content) {
-                        state.tabs[0].content = legacyContent;
-                        localStorage.removeItem('blank-page-content'); // Clean up
+                        
+                        // Validate each tab
+                        const validTabs = tabsData.tabs.filter(tab => {
+                            if (!tab || typeof tab !== 'object') return false;
+                            if (typeof tab.id !== 'number') return false;
+                            if (typeof tab.title !== 'string') return false;
+                            if (typeof tab.content !== 'string') return false;
+                            return true;
+                        });
+                        
+                        // If we lost tabs due to corruption, warn the user
+                        if (validTabs.length !== tabsData.tabs.length) {
+                            const lostCount = tabsData.tabs.length - validTabs.length;
+                            console.warn(`Recovered from data corruption: ${lostCount} tabs could not be loaded`);
+                            ui.showStatus(`Warning: ${lostCount} corrupted tabs were skipped`);
+                        }
+                        
+                        state.tabs = validTabs;
+                        state.nextTabId = typeof tabsData.nextTabId === 'number' ? tabsData.nextTabId : 1;
+                        
+                        // Use log utility for development-only logging
+                        log.info('Loaded tabs data:', { 
+                            tabCount: state.tabs.length,
+                            nextTabId: state.nextTabId
+                        });
+                        
+                        if (log.isDev()) {
+                            state.tabs.forEach((tab, i) => {
+                                log.info(`Tab ${i+1}:`, {
+                                    id: tab.id,
+                                    title: tab.title,
+                                    contentLength: tab.content ? tab.content.length : 0,
+                                    isAutoTitle: tab.isAutoTitle
+                                });
+                            });
+                        }
+                        
+                        // Ensure all tabs have required properties (for backward compatibility)
+                        state.tabs.forEach(tab => {
+                            if (tab.isAutoTitle === undefined) {
+                                tab.isAutoTitle = tab.title === 'Untitled' || tab.title.startsWith('Document ');
+                            }
+                            if (tab.spellcheck === undefined) {
+                                // Use legacy global setting or default to true
+                                tab.spellcheck = legacySpellcheck !== null ? legacySpellcheck === 'true' : true;
+                            }
+                            if (tab.countMode === undefined) {
+                                // Use legacy global setting or default to characters
+                                const legacyCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE);
+                                tab.countMode = legacyCountMode || COUNT_MODES.CHARACTERS;
+                            }
+                            // Clear any animation flags that might be persisted
+                            tab.isOpening = false;
+                            
+                            // Ensure tab has content (defensive programming)
+                            if (tab.content === undefined) {
+                                tab.content = '';
+                            }
+                            
+                            // Ensure lastModified exists
+                            if (!tab.lastModified) {
+                                tab.lastModified = Date.now();
+                            }
+                        });
+                        
+                        // Migrate legacy content if tabs exist but first tab is empty
+                        if (legacyContent && state.tabs.length > 0 && (!state.tabs[0].content || state.tabs[0].content === '')) {
+                            state.tabs[0].content = legacyContent;
+                            localStorage.removeItem('blank-page-content'); // Clean up
+                        }
+                    } catch (parseError) {
+                        log.error('Error parsing tabs JSON:', parseError);
+                        
+                        // Try to recover by creating a backup of corrupted data
+                        try {
+                            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                            localStorage.setItem(`blank-page-tabs-corrupted-${timestamp}`, tabsJson);
+                            console.warn('Corrupted data backed up as: blank-page-tabs-corrupted-' + timestamp);
+                        } catch (backupError) {
+                            console.error('Could not backup corrupted data:', backupError);
+                        }
+                        
+                        // Fallback to legacy content or create a new tab
+                        state.tabs = [];
+                        ui.showStatus('Data corruption detected - started fresh');
                     }
                 } else if (legacyContent) {
                     // Migrate from legacy single-content format
                     const spellcheckEnabled = legacySpellcheck !== null ? legacySpellcheck === 'true' : true;
+                    const legacyCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE) || COUNT_MODES.CHARACTERS;
                     tabManager.createTab('Untitled', legacyContent, false);
                     state.tabs[0].spellcheck = spellcheckEnabled;
+                    state.tabs[0].countMode = legacyCountMode;
+                    // Clear opening animation for migrated tab
+                    state.tabs[0].isOpening = false;
                     localStorage.removeItem('blank-page-content'); // Clean up
                 }
                 
@@ -351,17 +784,33 @@
                     localStorage.removeItem(STORAGE_KEYS.SPELLCHECK);
                 }
                 
+                // Clean up legacy count mode setting (now stored per-tab)
+                if (localStorage.getItem(STORAGE_KEYS.COUNT_MODE) !== null) {
+                    localStorage.removeItem(STORAGE_KEYS.COUNT_MODE);
+                }
+                
                 // Create default tab if none exist
                 if (state.tabs.length === 0) {
                     tabManager.createTab('Untitled', '', false);
+                    // Clear opening animation for default tab
+                    state.tabs[0].isOpening = false;
                 }
                 
                 // Load active tab
                 const savedActiveTab = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
                 if (savedActiveTab) {
-                    const activeTab = state.tabs.find(t => t.id === parseInt(savedActiveTab, 10));
-                    if (activeTab) {
-                        state.activeTabId = activeTab.id;
+                    const savedTabId = parseInt(savedActiveTab, 10);
+                    if (!isNaN(savedTabId)) {
+                        const activeTab = state.tabs.find(t => t.id === savedTabId);
+                        if (activeTab) {
+                            state.activeTabId = activeTab.id;
+                        } else {
+                            // Active tab ID doesn't exist, clear it
+                            localStorage.removeItem(STORAGE_KEYS.ACTIVE_TAB);
+                        }
+                    } else {
+                        // Invalid saved tab ID, clear it
+                        localStorage.removeItem(STORAGE_KEYS.ACTIVE_TAB);
                     }
                 }
                 
@@ -372,18 +821,27 @@
                 
                 tabManager.renderTabs();
                 if (state.activeTabId) {
-                    tabManager.switchToTab(state.activeTabId);
+                    const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+                    if (activeTab) {
+                        elements.page.value = activeTab.content || '';
+                        ui.applySpellcheck(activeTab.spellcheck || true);
+                        state.countMode = activeTab.countMode || COUNT_MODES.CHARACTERS;
+                    }
                 }
                 
             } catch (error) {
-                console.error('Error loading tabs:', error);
+                log.error('Error loading tabs:', error);
                 // Create default tab on error
                 if (state.tabs.length === 0) {
                     tabManager.createTab('Untitled', '', false);
                     state.activeTabId = state.tabs[0].id;
+                    // Clear opening animation for error recovery tab
+                    state.tabs[0].isOpening = false;
                     tabManager.renderTabs();
-                    tabManager.switchToTab(state.activeTabId);
+                    elements.page.value = '';
+                    ui.applySpellcheck(true);
                 }
+                ui.showStatus('Error loading data - started fresh');
             }
         },
         
@@ -413,6 +871,170 @@
                 tab.title = newTitle;
                 tab.lastModified = Date.now();
                 tabManager.renderTabs();
+                // Don't save immediately here to avoid excessive localStorage writes
+                // Saving will be handled by the periodic save in handleInput
+            }
+        },
+        
+        // Backup management functions
+        createBackup: () => {
+            try {
+                if (state.activeTabId) {
+                    // Save current content first
+                    tabManager.saveCurrentTabContent();
+                }
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const backupKey = `blank-page-backup-${timestamp}`;
+                const tabsData = {
+                    tabs: state.tabs,
+                    nextTabId: state.nextTabId,
+                    activeTabId: state.activeTabId,
+                    timestamp: Date.now()
+                };
+                
+                localStorage.setItem(backupKey, JSON.stringify(tabsData));
+                log.info('Created backup:', backupKey);
+                
+                // Clean up old backups (keep only last 5)
+                tabManager.cleanupBackups();
+            } catch (error) {
+                log.error('Error creating backup:', error);
+            }
+        },
+        
+        cleanupBackups: () => {
+            try {
+                const allKeys = Object.keys(localStorage);
+                const backupKeys = allKeys
+                    .filter(key => key.startsWith('blank-page-backup-'))
+                    .sort()
+                    .reverse(); // Most recent first
+                
+                // Keep only the 5 most recent backups
+                const keysToDelete = backupKeys.slice(5);
+                keysToDelete.forEach(key => {
+                    localStorage.removeItem(key);
+                    log.info('Removed old backup:', key);
+                });
+            } catch (error) {
+                log.error('Error cleaning up backups:', error);
+            }
+        },
+        
+        startPeriodicBackups: () => {
+            // Clear any existing interval
+            if (state.backupInterval) {
+                clearInterval(state.backupInterval);
+            }
+            
+            // Create backup every 10 minutes if there have been changes
+            state.backupInterval = setInterval(() => {
+                if (state.contentModified || state.tabs.some(tab => tab.lastModified > Date.now() - 600000)) {
+                    tabManager.createBackup();
+                }
+            }, 600000); // 10 minutes
+        },
+        
+        stopPeriodicBackups: () => {
+            if (state.backupInterval) {
+                clearInterval(state.backupInterval);
+                state.backupInterval = null;
+            }
+        }
+    };
+    
+    // Helper functions for import/export (moved inside IIFE)
+    const helpers = {
+        downloadFile: (blob, fileName) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        },
+        
+        loadJSZipLibrary: async () => {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                script.integrity = 'sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==';
+                script.crossOrigin = 'anonymous';
+                script.referrerPolicy = 'no-referrer';
+                script.onload = () => resolve();
+                script.onerror = () => {
+                    reject(new Error('Failed to load JSZip library'));
+                    ui.showStatus('Error loading zip library');
+                };
+                document.head.appendChild(script);
+            });
+        },
+        
+        importZipFile: async (file) => {
+            // Dynamically load JSZip library
+            if (typeof JSZip === 'undefined') {
+                await helpers.loadJSZipLibrary();
+            }
+            
+            try {
+                const zip = new JSZip();
+                const contents = await zip.loadAsync(file);
+                let importCount = 0;
+                
+                // Process each file in the zip
+                const filePromises = [];
+                contents.forEach((relativePath, zipEntry) => {
+                    if (!zipEntry.dir && relativePath.endsWith('.txt')) {
+                        const promise = zipEntry.async('string').then(content => {
+                            const fileName = relativePath.split('/').pop().replace('.txt', '');
+                            tabManager.createTab(fileName, content, importCount === 0);
+                            importCount++;
+                        });
+                        filePromises.push(promise);
+                    }
+                });
+                
+                await Promise.all(filePromises);
+                ui.showStatus(`Imported ${importCount} tabs`);
+            } catch (error) {
+                console.error('Error importing zip file:', error);
+                ui.showStatus('Error importing zip file');
+            }
+        },
+        
+        exportTabsAsZip: async () => {
+            // Dynamically load JSZip library
+            if (typeof JSZip === 'undefined') {
+                await helpers.loadJSZipLibrary();
+            }
+            
+            try {
+                const zip = new JSZip();
+                
+                // Add each tab as a text file
+                state.tabs.forEach(tab => {
+                    const fileName = `${tab.title}.txt`;
+                    zip.file(fileName, tab.content);
+                });
+                
+                // Generate the zip file
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const fileName = 'blank-page-tabs.zip';
+                
+                // Download the zip file
+                helpers.downloadFile(blob, fileName);
+                ui.showStatus(`Exported ${state.tabs.length} tabs as zip`);
+            } catch (error) {
+                console.error('Error exporting zip file:', error);
+                ui.showStatus('Error exporting zip file');
             }
         }
     };
@@ -479,19 +1101,28 @@
     
     // Core Functionality
     const app = {
-        saveContent: () => {
-            try {
-                // Save current tab content first
-                tabManager.saveCurrentTabContent();
-                tabManager.saveTabs();
-                ui.showStatus('Saved');
-            } catch (error) {
-                console.error('Error saving content:', error);
-                ui.showStatus('Error saving');
-            }
-        },
-        
         handleInput: () => {
+            // Don't process input during tab operations to prevent race conditions
+            if (state.isProcessingTabOperation) {
+                log.info('Ignoring input event during tab operation');
+                return;
+            }
+            
+            // Ensure we have an active tab before processing input
+            if (!state.activeTabId) {
+                return;
+            }
+            
+            // Verify the active tab still exists in our tabs array
+            const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+            if (!activeTab) {
+                console.warn('Active tab not found in tabs array, skipping input handling');
+                return;
+            }
+            
+            // Mark content as modified
+            state.contentModified = true;
+            
             ui.showStatus('Saving...');
             app.updateCount();
             
@@ -503,19 +1134,61 @@
             }
             
             // Save after 1 second of inactivity
-            state.saveTimeout = setTimeout(app.saveContent, 1000);
+            state.saveTimeout = setTimeout(() => {
+                app.saveContent();
+                
+                // Add a backup save to ensure content is persisted even if the first save attempt fails
+                setTimeout(() => {
+                    // Verify content was saved by checking localStorage
+                    try {
+                        const tabsJson = localStorage.getItem(STORAGE_KEYS.TABS);
+                        if (!tabsJson) {
+                            // If tabs aren't in localStorage, try saving again
+                            console.warn('Backup save triggered - no tabs data found in localStorage');
+                            tabManager.saveCurrentTabContent();
+                            tabManager.saveTabs();
+                        }
+                    } catch (error) {
+                        console.error('Error in backup save verification:', error);
+                    }
+                }, 500);
+            }, 1000);
+        },
+        
+        saveContent: () => {
+            try {
+                // Save current tab content first
+                if (state.activeTabId) {
+                    const beforeContent = state.tabs.find(t => t.id === state.activeTabId)?.content;
+                    const currentContent = elements.page.value;
+                    
+                    // Only save if content has actually changed
+                    if (beforeContent !== currentContent || state.contentModified) {
+                        tabManager.saveCurrentTabContent();
+                        state.contentModified = false; // Reset modification flag after saving
+                        ui.showStatus('Saved');
+                    } else {
+                        // If content is unchanged, just update the status without saving
+                        ui.showStatus('No changes to save');
+                    }
+                } else {
+                    ui.showStatus('No active tab to save');
+                }
+            } catch (error) {
+                console.error('Error saving content:', error);
+                ui.showStatus('Error saving: ' + (error.message || 'Unknown error'));
+            }
         },
         
         updateCount: () => {
             const text = elements.page.value || '';
-            const selection = elements.page.value.substring(
-                elements.page.selectionStart, 
-                elements.page.selectionEnd
-            );
-            const hasSelection = selection.length > 0;
+            const selectionStart = elements.page.selectionStart;
+            const selectionEnd = elements.page.selectionEnd;
+            const hasSelection = selectionStart !== selectionEnd;
             
             elements.countDisplay.classList.toggle('highlighted', hasSelection);
-            const textToCount = hasSelection ? selection : text;
+            
+            const textToCount = hasSelection ? text.substring(selectionStart, selectionEnd) : text;
             
             let countText;
             if (state.countMode === COUNT_MODES.CHARACTERS) {
@@ -525,28 +1198,57 @@
                 countText = `${wordCount} words`;
             }
             
-            // Only update DOM if the text has changed
-            if (elements.countDisplay.textContent !== countText) {
-                elements.countDisplay.textContent = countText;
+            // Early return check - only if nothing meaningful has changed
+            const currentHighlighted = elements.countDisplay.classList.contains('highlighted');
+            if (currentHighlighted === hasSelection && 
+                !hasSelection && 
+                state.lastTextLength === text.length && 
+                state.lastDisplayedCountText === countText) {
+                return;
             }
             
-            elements.countDisplay.title = hasSelection 
+            // Update DOM
+            elements.countDisplay.textContent = countText;
+            
+            // Update caches
+            state.lastTextLength = text.length;
+            state.lastDisplayedCountText = countText;
+            
+            const newTitle = hasSelection 
                 ? "Counting selected text" 
                 : "Click to toggle between characters/words count";
             
-            // Update aria-label for screen readers
-            elements.countDisplay.setAttribute('aria-label', 
-                `${hasSelection ? 'Selected text: ' : ''}${countText}`);
+            // Only update title if it changed
+            if (elements.countDisplay.title !== newTitle) {
+                elements.countDisplay.title = newTitle;
+            }
+            
+            // Only update aria-label if it changed
+            const newAriaLabel = `${hasSelection ? 'Selected text: ' : ''}${countText}`;
+            if (elements.countDisplay.getAttribute('aria-label') !== newAriaLabel) {
+                elements.countDisplay.setAttribute('aria-label', newAriaLabel);
+            }
         },
         
         toggleCountMode: () => {
-            state.countMode = state.countMode === COUNT_MODES.CHARACTERS 
+            if (!state.activeTabId) return;
+            
+            const tab = state.tabs.find(t => t.id === state.activeTabId);
+            if (!tab) return;
+            
+            // Toggle the count mode
+            const newCountMode = state.countMode === COUNT_MODES.CHARACTERS 
                 ? COUNT_MODES.WORDS 
                 : COUNT_MODES.CHARACTERS;
             
+            // Update both the tab and global state
+            tab.countMode = newCountMode;
+            state.countMode = newCountMode;
+            tab.lastModified = Date.now();
+            
             try {
-                localStorage.setItem(STORAGE_KEYS.COUNT_MODE, state.countMode);
-                app.updateCount();
+                tabManager.saveTabs(); // Save tabs with updated count mode setting
+                app.updateCount(); // Force update of the display
             } catch (error) {
                 console.error('Error saving count mode:', error);
             }
@@ -635,13 +1337,10 @@
                 window.addEventListener('load', () => {
                     navigator.serviceWorker.register('service-worker.js')
                         .then(registration => {
-                            // Only log in development
-                            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-                                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                            }
+                            log.info('ServiceWorker registration successful with scope: ', registration.scope);
                         })
                         .catch(error => {
-                            console.error('ServiceWorker registration failed: ', error);
+                            log.error('ServiceWorker registration failed: ', error);
                         });
                 });
             }
@@ -649,12 +1348,6 @@
         
         loadSettings: () => {
             try {
-                // Load count mode preference
-                const savedCountMode = localStorage.getItem(STORAGE_KEYS.COUNT_MODE);
-                if (savedCountMode && Object.values(COUNT_MODES).includes(savedCountMode)) {
-                    state.countMode = savedCountMode;
-                }
-                
                 // Load display mode preference
                 const savedDisplayMode = localStorage.getItem(STORAGE_KEYS.DISPLAY_MODE);
                 if (savedDisplayMode && Object.values(DISPLAY_MODES).includes(savedDisplayMode)) {
@@ -668,6 +1361,8 @@
                     state.screenMode = SCREEN_MODES.FULLSCREEN;
                 }
                 ui.applyScreenMode();
+                
+                // Note: Count mode is now stored per-tab, not globally
             } catch (error) {
                 console.error('Error loading settings:', error);
             }
@@ -690,10 +1385,6 @@
                     ui.showInstallPrompt();
                 }, 3000);
             });
-            
-            // PWA install button
-            elements.installButton.addEventListener('click', app.installApp);
-            elements.closePromptButton.addEventListener('click', app.closeInstallPrompt);
         },
         
         handleSelectionChange: () => {
@@ -761,7 +1452,17 @@
             
             // Tab management
             elements.addTabButton.addEventListener('click', () => {
-                tabManager.createTab('Untitled');
+                // Add subtle click animation
+                elements.addTabButton.style.transform = 'scale(0.96)';
+                elements.addTabButton.style.transitionDuration = '0.15s';
+                
+                setTimeout(() => {
+                    elements.addTabButton.style.transform = '';
+                    elements.addTabButton.style.transitionDuration = '';
+                    
+                    // Create new tab with auto-generated title
+                    tabManager.createTab('Untitled');
+                }, 150);
             });
             
             // Handle orientation changes
@@ -775,21 +1476,19 @@
             if (window.matchMedia) {
                 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
                 
+                const darkModeHandler = (e) => {
+                    if (state.displayMode === DISPLAY_MODES.AUTO) {
+                        document.body.classList.toggle('dark-mode', e.matches);
+                    }
+                };
+                
                 // Use addEventListener for all browsers (backwards compatibility handled internally)
                 try {
-                    darkModeMediaQuery.addEventListener('change', (e) => {
-                        if (state.displayMode === DISPLAY_MODES.AUTO) {
-                            document.body.classList.toggle('dark-mode', e.matches);
-                        }
-                    });
+                    darkModeMediaQuery.addEventListener('change', darkModeHandler);
                 } catch (error) {
                     // Fallback for older browsers
                     console.warn('MediaQueryList.addEventListener not supported');
-                    darkModeMediaQuery.addListener((e) => {
-                        if (state.displayMode === DISPLAY_MODES.AUTO) {
-                            document.body.classList.toggle('dark-mode', e.matches);
-                        }
-                    });
+                    darkModeMediaQuery.addListener(darkModeHandler);
                 }
             }
             
@@ -812,22 +1511,215 @@
             }
             
             // Ensure content is saved before page unloads
-            window.addEventListener('beforeunload', () => {
+            window.addEventListener('beforeunload', (e) => {
+                // Don't show confirmation if there's no active tab
+                if (!state.activeTabId) return;
+                
+                // Stop periodic backups
+                tabManager.stopPeriodicBackups();
+                
+                // Force immediate save of any pending content
                 if (state.saveTimeout) {
                     clearTimeout(state.saveTimeout);
-                    app.saveContent();
+                    state.saveTimeout = null;
+                }
+                
+                try {
+                    // Get current content
+                    const currentContent = elements.page.value;
+                    
+                    // Get the tab's stored content before saving
+                    const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+                    const storedContent = activeTab ? activeTab.content : '';
+                    
+                    // Check if there are unsaved changes
+                    const hasUnsavedChanges = currentContent !== storedContent || state.contentModified;
+                    
+                    // If there are changes, save them
+                    if (hasUnsavedChanges) {
+                        // Save current tab content
+                        tabManager.saveCurrentTabContent();
+                        
+                        // Save tabs to localStorage
+                        tabManager.saveTabs();
+                        
+                        // Create final backup before unload
+                        tabManager.createBackup();
+                        
+                        // Log content saving in development mode
+                        log.info('Saved content before unload:', 
+                            currentContent.length > 100 ? 
+                            currentContent.substring(0, 100) + '...' : 
+                            currentContent);
+                        
+                        // Reset modification flag after saving
+                        state.contentModified = false;
+                    }
+                } catch (error) {
+                    console.error('Error saving before unload:', error);
+                    // Don't block the page unload, but log the error
                 }
             });
+            
+            // More dropdown toggle
+            elements.moreButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent event from bubbling to document
+                elements.moreDropdown.classList.toggle('show');
+                elements.moreButton.setAttribute('aria-expanded', elements.moreDropdown.classList.contains('show'));
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!elements.moreButton.contains(e.target) && !elements.moreDropdown.contains(e.target)) {
+                    elements.moreDropdown.classList.remove('show');
+                    elements.moreButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+            
+            // Clear all tabs
+            elements.clearAllButton.addEventListener('click', () => {
+                // Save current content before showing confirmation
+                if (state.activeTabId) {
+                    tabManager.saveCurrentTabContent();
+                }
+                
+                // Check if there's any content to lose
+                const hasContent = state.tabs.some(tab => tab.content.trim() !== '');
+                
+                let confirmMessage = 'Are you sure you want to clear all tabs?';
+                if (hasContent) {
+                    confirmMessage = 'Are you sure you want to clear all tabs? This will permanently delete all your content and cannot be undone.';
+                }
+                
+                const confirmClear = confirm(confirmMessage);
+                if (confirmClear) {
+                    // Set processing flag to prevent input events during clearing
+                    state.isProcessingTabOperation = true;
+                    
+                    // Remove all existing tabs
+                    state.tabs = [];
+                    
+                    // Create a new empty tab
+                    tabManager.createTab('Untitled', '', true);
+                    
+                    // Update UI
+                    ui.showStatus('All tabs cleared');
+                    elements.moreDropdown.classList.remove('show');
+                    elements.moreButton.setAttribute('aria-expanded', 'false');
+                    
+                    // Clear the processing flag
+                    state.isProcessingTabOperation = false;
+                }
+            });
+            
+            // Import file
+            elements.importButton.addEventListener('click', () => {
+                // Create an invisible file input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.txt,.zip';
+                fileInput.style.display = 'none';
+                
+                // Handle file selection
+                const handleFileSelection = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) {
+                        fileInput.remove();
+                        return;
+                    }
+                    
+                    if (file.name.endsWith('.txt')) {
+                        // Import single text file
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const content = e.target.result;
+                            const fileName = file.name.replace('.txt', '');
+                            tabManager.createTab(fileName, content, true);
+                            ui.showStatus(`Imported "${fileName}"`);
+                        };
+                        reader.readAsText(file);
+                    } else if (file.name.endsWith('.zip')) {
+                        // Import zip file (multiple tabs)
+                        helpers.importZipFile(file);
+                    }
+                    
+                    // Clean up
+                    fileInput.remove();
+                    elements.moreDropdown.classList.remove('show');
+                    elements.moreButton.setAttribute('aria-expanded', 'false');
+                };
+                
+                fileInput.addEventListener('change', handleFileSelection);
+                document.body.appendChild(fileInput);
+                
+                // Trigger the file selection dialog
+                fileInput.click();
+            });
+            
+            // Export file(s)
+            elements.exportButton.addEventListener('click', () => {
+                // Save current tab content before exporting
+                tabManager.saveCurrentTabContent();
+                
+                if (state.tabs.length === 1) {
+                    // Export single tab as text file
+                    const tab = state.tabs[0];
+                    const fileName = `${tab.title}.txt`;
+                    const blob = new Blob([tab.content], { type: 'text/plain' });
+                    
+                    // Create download link
+                    helpers.downloadFile(blob, fileName);
+                    ui.showStatus(`Exported "${fileName}"`);
+                } else {
+                    // Export multiple tabs as zip file
+                    helpers.exportTabsAsZip();
+                }
+                
+                elements.moreDropdown.classList.remove('show');
+                elements.moreButton.setAttribute('aria-expanded', 'false');
+            });
+            
+            // PWA install button
+            elements.installButton.addEventListener('click', app.installApp);
+            elements.closePromptButton.addEventListener('click', app.closeInstallPrompt);
         },
         
         init: () => {
             try {
                 app.loadSettings();
                 tabManager.loadTabs();
+                
+                // Ensure active tab content is immediately set in the editor
+                if (state.activeTabId) {
+                    const activeTab = state.tabs.find(t => t.id === state.activeTabId);
+                    if (activeTab) {
+                        elements.page.value = activeTab.content;
+                        
+                        // Apply tab-specific spellcheck setting
+                        ui.applySpellcheck(activeTab.spellcheck || true);
+                        
+                        // Mark content as not modified since we just loaded it
+                        state.contentModified = false;
+                    }
+                    
+                    // Don't save immediately after loading - this could overwrite correct data
+                    // Only save if the user actually makes changes
+                }
+                
+                // Call setup event listeners explicitly
                 app.setupEventListeners();
                 app.setupPWA();
+                
+                // Start periodic backups for data protection
+                tabManager.startPeriodicBackups();
+                
+                // Create initial backup after successful load
+                setTimeout(() => {
+                    tabManager.createBackup();
+                }, 2000);
+                
             } catch (error) {
-                console.error('Error initializing app:', error);
+                log.error('Error initializing app:', error);
                 // Fallback initialization
                 try {
                     // Ensure at least one tab exists
@@ -838,8 +1730,11 @@
                     if (elements.page) {
                         elements.page.addEventListener('input', app.handleInput);
                     }
+                    
+                    // Still try to start backups even in fallback mode
+                    tabManager.startPeriodicBackups();
                 } catch (fallbackError) {
-                    console.error('Critical error in app initialization:', fallbackError);
+                    log.error('Critical error in app initialization:', fallbackError);
                 }
             }
         }

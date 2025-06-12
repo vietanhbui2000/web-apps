@@ -22,5 +22,23 @@
             "type": "image/png",
             "purpose": "any maskable"
         }
-    ]
+    ],
+  "shortcuts": [
+    {
+      "name": "New Tab",
+      "short_name": "New Tab",
+      "description": "Create a new blank tab",
+      "url": "./index.html?action=newtab"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Blank Page in Light Mode"
+    }
+  ],
+  "prefer_related_applications": false
 } 

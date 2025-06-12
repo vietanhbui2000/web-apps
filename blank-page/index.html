@@ -20,16 +20,8 @@
         <header class="header">
             <div class="title-area">
                 <h1>Blank Page</h1>
-                <div class="status" id="status" aria-live="polite">Saved</div>
             </div>
             <div class="controls">
-                <div id="countDisplay" class="count-display" title="Click to toggle between characters/words count" role="button" tabindex="0" aria-label="Text count">0 characters</div>
-                
-                <button id="spellcheckToggle" class="header-button" title="Check spelling?" aria-label="Toggle spell checking">
-                    <i class="icon active fa-regular fa-circle-check" id="spellcheckOnIcon" aria-hidden="true"></i>
-                    <i class="icon fa-regular fa-circle-dot" id="spellcheckOffIcon" aria-hidden="true"></i>
-                </button>
-                
                 <button id="displayModeToggle" class="header-button" title="Display mode" aria-label="Toggle display mode">
                     <i class="icon active fa-regular fa-face-smile-wink" id="autoModeIcon" aria-hidden="true"></i>
                     <i class="icon fa-regular fa-sun" id="lightModeIcon" aria-hidden="true"></i>
@@ -44,22 +36,50 @@
         </header>
         
         <!-- Tab Bar -->
-        <section class="tab-bar" id="tabBar">
+        <section class="tab-bar" id="tabBar" role="tablist" aria-label="Document tabs">
             <div class="tabs-container" id="tabsContainer">
                 <!-- Tabs will be dynamically added here -->
             </div>
             <button class="add-tab-button" id="addTabButton" title="Add new tab" aria-label="Add new tab">
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
             </button>
+            <div class="more-menu-container">
+                <button class="more-button" id="moreButton" title="More options" aria-label="More options" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu" id="moreDropdown" aria-labelledby="moreButton" role="menu">
+                    <button class="dropdown-item" id="clearAllButton" role="menuitem">
+                        <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Clear All
+                    </button>
+                    <button class="dropdown-item" id="importButton" role="menuitem">
+                        <i class="fa-solid fa-file-import" aria-hidden="true"></i> Import File
+                    </button>
+                    <button class="dropdown-item" id="exportButton" role="menuitem">
+                        <i class="fa-solid fa-file-export" aria-hidden="true"></i> Export File
+                    </button>
+                </div>
+            </div>
         </section>
         
         <main>
             <textarea id="page" autofocus placeholder="Start typing..." spellcheck="true" aria-label="Text editor"></textarea>
         </main>
+        
+        <footer class="footer">
+            <div class="footer-left">
+                <button id="spellcheckToggle" class="footer-button" title="Check spelling?" aria-label="Toggle spell checking">
+                    <i class="icon active fa-regular fa-circle-check" id="spellcheckOnIcon" aria-hidden="true"></i>
+                    <i class="icon fa-regular fa-circle-dot" id="spellcheckOffIcon" aria-hidden="true"></i>
+                </button>
+                <div class="status" id="status" aria-live="polite">Saved</div>
+            </div>
+            
+            <div id="countDisplay" class="count-display" title="Click to toggle between characters/words count" role="button" tabindex="0" aria-label="Text count">0 characters</div>
+        </footer>
     </div>
     
     <!-- PWA Install Prompt -->
-    <div id="installPrompt" role="dialog" aria-labelledby="installPromptTitle">
+    <div id="installPrompt" role="dialog" aria-labelledby="installPromptTitle" aria-hidden="true">
         <p id="installPromptTitle">Install Blank Page for offline use</p>
         <button id="installButton">Install</button>
         <button class="close" id="closePrompt" aria-label="Close install prompt">&times;</button>
