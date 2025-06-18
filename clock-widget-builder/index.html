@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Create and customize a clock widget with live preview and get your embed code to use in Obsidian/Notion.">
+    <title>Clock Widget Builder</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1 class="app-title">Clock Widget Builder</h1>
+        </header>
+        
+        <main class="app-main">
+            <div class="app-layout">
+                <!-- Left Column: Controls -->
+                <div class="controls-panel">
+                    <h3 class="section-title">Styling</h3>
+                    <div class="clock-widget__controls">
+                        <!-- 1. Format -->
+                        <div class="control-group">
+                            <label class="control-label">Format</label>
+                            <div class="control-row">
+                                <button id="format-toggle" class="clock-widget__button" aria-label="Toggle 12/24 hour format">
+                                    24H
+                                </button>
+                                <button id="seconds-toggle" class="clock-widget__button" aria-label="Toggle seconds display">
+                                    SEC
+                                </button>
+                                <button id="blink-toggle" class="clock-widget__button" aria-label="Toggle colon blinking">
+                                    BLINK
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 2. Alignment -->
+                        <div class="control-group">
+                            <label class="control-label">Alignment</label>
+                            <div class="control-row">
+                                <button id="align-left" class="clock-widget__button align-btn" aria-label="Align left">
+                                    ←
+                                </button>
+                                <button id="align-center" class="clock-widget__button align-btn active" aria-label="Align center">
+                                    ↔
+                                </button>
+                                <button id="align-right" class="clock-widget__button align-btn" aria-label="Align right">
+                                    →
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 3. Text Colors -->
+                        <div class="control-group">
+                            <label class="control-label">Text Colors</label>
+                            <div class="control-row">
+                                <div class="color-control">
+                                    <label for="time-color">Time</label>
+                                    <input type="color" id="time-color-picker" class="color-picker" value="#007acc" aria-label="Time text color">
+                                </div>
+                                <div class="color-control">
+                                    <label for="date-color">Date</label>
+                                    <input type="color" id="date-color-picker" class="color-picker" value="#333333" aria-label="Date text color">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 4. Font Styling -->
+                        <div class="control-group">
+                            <label class="control-label">Font Styling</label>
+                            <div class="control-row">
+                                <div class="styling-control">
+                                    <label class="styling-label">Time</label>
+                                    <div class="styling-buttons">
+                                        <button id="time-bold" class="clock-widget__button style-btn" aria-label="Toggle time bold">
+                                            B
+                                        </button>
+                                        <button id="time-italic" class="clock-widget__button style-btn" aria-label="Toggle time italic">
+                                            <em>I</em>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="styling-control">
+                                    <label class="styling-label">Date</label>
+                                    <div class="styling-buttons">
+                                        <button id="date-bold" class="clock-widget__button style-btn" aria-label="Toggle date bold">
+                                            B
+                                        </button>
+                                        <button id="date-italic" class="clock-widget__button style-btn" aria-label="Toggle date italic">
+                                            <em>I</em>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 5. Font Sizes -->
+                        <div class="control-group">
+                            <label class="control-label">Font Sizes</label>
+                            <div class="control-row">
+                                <div class="size-control">
+                                    <label for="time-size">Time</label>
+                                    <input type="range" id="time-size" min="1" max="5" value="3" class="size-slider">
+                                </div>
+                                <div class="size-control">
+                                    <label for="date-size">Date</label>
+                                    <input type="range" id="date-size" min="1" max="5" value="3" class="size-slider">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 6. Background -->
+                        <div class="control-group">
+                            <label class="control-label">Background</label>
+                            <div class="control-row">
+                                <div class="color-control">
+                                    <label for="bg-transparent">Transparent</label>
+                                    <button id="bg-transparent" class="color-option-btn active" aria-label="Transparent background">
+                                        <div class="transparent-indicator"></div>
+                                    </button>
+                                </div>
+                                <div class="color-control">
+                                    <label for="bg-color">Custom</label>
+                                    <input type="color" id="bg-color-picker" class="color-picker" value="#ffffff" aria-label="Background color">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 7. Border -->
+                        <div class="control-group">
+                            <label class="control-label">Border</label>
+                            <div class="control-row">
+                                <button id="frame-toggle" class="clock-widget__button" aria-label="Toggle border">
+                                    BORDER
+                                </button>
+                                <button id="rounded-toggle" class="clock-widget__button" aria-label="Toggle rounded corners">
+                                    ROUNDED
+                                </button>
+                                <button id="shadow-toggle" class="clock-widget__button" aria-label="Toggle shadow">
+                                    SHADOW
+                                </button>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Size Section -->
+                <div class="size-section">
+                    <h3 class="section-title">Size</h3>
+                    <div class="size-controls">
+                        <!-- Size Mode Selection -->
+                        <div class="control-group">
+                            <div class="control-row">
+                                <button id="size-adaptive" class="clock-widget__button size-mode-btn active" aria-label="Adaptive size mode" title="Automatically adjusts widget size to fit content inside">
+                                    ADAPTIVE
+                                </button>
+                                <button id="size-fixed" class="clock-widget__button size-mode-btn" aria-label="Custom size mode" title="Uses custom width and height dimensions for the widget">
+                                    CUSTOM
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Fixed Size Controls (hidden by default) -->
+                        <div id="fixed-size-controls" class="control-group hidden">
+                            <label class="control-label">Dimensions (px)</label>
+                            <div class="control-row">
+                                <div class="dimension-control">
+                                    <label for="widget-width">Width</label>
+                                    <input type="number" id="widget-width" class="dimension-input" value="340" min="200" max="800" aria-label="Widget width">
+                                </div>
+                                <div class="dimension-control">
+                                    <label for="widget-height">Height</label>
+                                    <input type="number" id="widget-height" class="dimension-input" value="120" min="100" max="400" aria-label="Widget height">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Column: Preview and Code -->
+                <div class="preview-panel">
+                    
+                    <div class="preview-section">
+                        <h3 class="section-title">Preview</h3>
+                        <div class="clock-preview">
+                            <iframe id="clock-iframe" src="clock.html" width="100%" height="200" frameborder="0"></iframe>
+                        </div>
+                    </div>
+                    
+                    <div class="code-section">
+                        <h3 class="section-title">Code</h3>
+                        <div class="code-content">
+                            <div class="code-block">
+                                <textarea id="code-textarea" readonly class="code-textarea" placeholder="Iframe code will appear here..."></textarea>
+                                <button id="copy-code" class="copy-button" title="Copy code">
+                                    COPY
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reset Button -->
+                    <button id="reset-all" class="clock-widget__button reset-button" aria-label="Reset all options">
+                        RESET
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

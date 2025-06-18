@@ -1,0 +1,794 @@
+/* CSS Variables for theming */
+:root {
+    --text-color: #333333;
+    --accent-color: #007acc;
+    --border-color: #e0e0e0;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --button-bg: #f5f5f5;
+    --button-hover: #e0e0e0;
+    --button-active: #007acc;
+    --button-active-text: #ffffff;
+    --bg-light: #ffffff;
+    --bg-gray: #f8f9fa;
+    --panel-bg: #ffffff;
+    --panel-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    
+    /* Dynamic variables controlled by JavaScript */
+    --bg-color: transparent;
+    --time-font-size: 3rem;
+    --date-font-size: 1.125rem;
+    --time-color: #007acc;
+    --date-color: #333333;
+    --text-align: center;
+    --border-width: 0px;
+    --border-radius: 0px;
+}
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-gray);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+/* App layout */
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    background-color: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
+    padding: 2rem 1rem 1.5rem;
+    text-align: center;
+    box-shadow: var(--panel-shadow);
+}
+
+.app-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.app-subtitle {
+    font-size: 1rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+.app-main {
+    flex: 1;
+    padding: 2rem 1rem;
+}
+
+.app-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    grid-template-rows: auto auto;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 100%;
+}
+
+.controls-panel {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.size-section {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.preview-panel {
+    grid-column: 2;
+    grid-row: 1 / -1;
+}
+
+/* Controls Panel */
+.controls-panel {
+    background-color: var(--panel-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--panel-shadow);
+    border: 1px solid var(--border-color);
+    height: fit-content;
+}
+
+/* Preview Panel */
+.preview-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.preview-section,
+.code-section {
+    background-color: var(--panel-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--panel-shadow);
+    border: 1px solid var(--border-color);
+}
+
+.section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Clock Preview */
+.clock-preview {
+    background-color: var(--bg-gray);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#clock-iframe {
+    border-radius: 6px;
+    background-color: transparent;
+    max-width: 100%;
+    /* Maintain aspect ratio for responsive layouts */
+}
+
+/* Code Section */
+.code-content {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-gray);
+}
+
+.code-textarea {
+    width: 100%;
+    height: 120px;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    background-color: var(--bg-gray);
+    color: var(--text-color);
+    resize: none;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+}
+
+.code-textarea:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.copy-button {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    background-color: var(--button-active);
+    color: var(--button-active-text);
+    border: none;
+    border-radius: 6px;
+    padding: 0.375rem 0.625rem;
+    min-width: 50px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.copy-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.copy-button.copied {
+    background-color: #28a745;
+}
+
+/* Original Controls Styles */
+.clock-widget__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.control-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.control-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.clock-widget__button {
+    background-color: var(--button-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 55px;
+    text-transform: uppercase;
+}
+
+.clock-widget__button:hover {
+    background-color: var(--button-hover);
+    transform: translateY(-1px);
+}
+
+.clock-widget__button:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.clock-widget__button:active {
+    transform: translateY(0);
+}
+
+.clock-widget__button.active {
+    background-color: var(--button-active);
+    color: var(--button-active-text);
+    border-color: var(--button-active);
+}
+
+.clock-widget__button:disabled {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.clock-widget__button:disabled:hover {
+    background-color: var(--button-bg);
+    transform: none;
+}
+
+.reset-button {
+    background-color: #ff6b6b;
+    color: white;
+    border-color: #ff6b6b;
+    width: 140px !important;
+    font-size: 0.75rem !important;
+    padding: 0.625rem 1rem !important;
+    font-weight: 600 !important;
+    margin: 0 auto !important;
+    display: block !important;
+}
+
+.reset-button:hover {
+    background-color: #ff5252;
+    border-color: #ff5252;
+}
+
+/* Font styling controls */
+.styling-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.styling-label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.styling-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.style-btn {
+    min-width: 55px !important;
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.style-btn em {
+    font-style: italic;
+    font-weight: normal;
+}
+
+/* Color picker */
+.color-picker {
+    width: 55px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+    padding: 2px;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 4px;
+}
+
+.color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+
+/* Color controls */
+.color-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.color-control label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.color-control .color-picker {
+    width: 55px;
+    height: 36px;
+}
+
+/* Transparent background button */
+.color-option-btn {
+    width: 55px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.color-option-btn:hover {
+    border-color: var(--accent-color);
+}
+
+.color-option-btn.active {
+    border-color: var(--button-active);
+    border-width: 2px;
+    padding: 1px;
+}
+
+.transparent-indicator {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    background-color: #ffffff;
+}
+
+/* Size controls */
+.size-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.size-control label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.size-slider {
+    width: 100%;
+    max-width: 90px;
+    height: 4px;
+    background: var(--button-bg);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.size-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+/* Text alignment classes */
+.align-left {
+    --text-align: left;
+}
+
+.align-center {
+    --text-align: center;
+}
+
+.align-right {
+    --text-align: right;
+}
+
+/* Frame options */
+.with-frame {
+    --border-width: 2px;
+}
+
+.rounded {
+    --border-radius: 1rem;
+}
+
+/* Font size variations */
+.time-size-1 {
+    --time-font-size: 1.5rem;
+}
+
+.time-size-2 {
+    --time-font-size: 2rem;
+}
+
+.time-size-3 {
+    --time-font-size: 3rem;
+}
+
+.time-size-4 {
+    --time-font-size: 4rem;
+}
+
+.time-size-5 {
+    --time-font-size: 5rem;
+}
+
+.date-size-1 {
+    --date-font-size: 0.75rem;
+}
+
+.date-size-2 {
+    --date-font-size: 0.875rem;
+}
+
+.date-size-3 {
+    --date-font-size: 1.125rem;
+}
+
+.date-size-4 {
+    --date-font-size: 1.375rem;
+}
+
+.date-size-5 {
+    --date-font-size: 1.625rem;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .app-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 1.5rem;
+    }
+    
+    .controls-panel {
+        grid-column: auto;
+        grid-row: auto;
+        order: 1;
+    }
+    
+    .size-section {
+        grid-column: auto;
+        grid-row: auto;
+        order: 2;
+    }
+    
+    .preview-section {
+        order: 3;
+    }
+    
+    .code-section {
+        order: 4;
+    }
+    
+    .reset-button {
+        order: 5;
+        margin-top: 1rem !important;
+        align-self: center;
+        justify-self: center;
+    }
+    
+    .preview-panel {
+        grid-column: auto;
+        grid-row: auto;
+        display: contents;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-main {
+        padding: 1rem 0.5rem;
+    }
+    
+    .reset-button {
+        margin-top: 1rem !important;
+    }
+    
+    .app-header {
+        padding: 1.5rem 1rem 1rem;
+    }
+    
+    .app-title {
+        font-size: 2rem;
+    }
+    
+    .controls-panel,
+    .preview-section,
+    .code-section {
+        padding: 1rem;
+    }
+        
+    .control-row {
+        justify-content: center;
+    }
+    
+    .clock-widget__button:not(.reset-button) {
+        font-size: 0.625rem;
+        padding: 0.375rem 0.625rem;
+        min-width: 45px;
+    }
+    
+    .style-btn {
+        min-width: 45px !important;
+        padding: 0.375rem 0.625rem !important;
+        font-size: 0.625rem !important;
+    }
+    
+    .color-picker {
+        width: 45px;
+        height: 32px;
+    }
+    
+    .color-control .color-picker {
+        width: 45px;
+        height: 32px;
+    }
+    
+    .color-option-btn {
+        width: 45px;
+        height: 32px;
+    }
+    
+    .code-textarea {
+        height: 100px;
+        font-size: 0.625rem;
+    }
+    
+    .size-mode-btn {
+        min-width: 65px !important;
+        font-size: 0.625rem !important;
+        padding: 0.375rem 0.625rem !important;
+    }
+    
+    .dimension-input {
+        width: 70px;
+        font-size: 0.625rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-layout {
+        gap: 1rem;
+    }
+    
+    .reset-button {
+        margin-top: 1rem !important;
+    }
+    
+    .app-title {
+        font-size: 1.75rem;
+    }
+    
+    .controls-panel,
+    .preview-section,
+    .code-section {
+        padding: 0.75rem;
+    }
+    
+
+    
+    .control-group {
+        gap: 0.5rem;
+    }
+    
+    .control-row {
+        gap: 0.375rem;
+    }
+    
+    .clock-widget__button:not(.reset-button) {
+        font-size: 0.625rem;
+        padding: 0.25rem 0.5rem;
+        min-width: 40px;
+    }
+    
+    .style-btn {
+        min-width: 40px !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.625rem !important;
+    }
+    
+    .size-mode-btn {
+        min-width: 60px !important;
+        font-size: 0.625rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+    
+    .color-control .color-picker {
+        width: 45px;
+        height: 28px;
+    }
+    
+    .color-option-btn {
+        width: 45px;
+        height: 28px;
+    }
+    
+
+}
+
+/* Animation for updates */
+.clock-widget__time,
+.clock-widget__date {
+    transition: font-size 0.3s ease;
+}
+
+/* Iframe optimization */
+@media (max-width: 350px) {
+    .clock-widget__container {
+        border-width: 1px;
+        padding: 0.75rem;
+    }
+    
+    .clock-widget__display {
+        margin-bottom: 1rem;
+    }
+    
+    .control-group {
+        gap: 0.25rem;
+    }
+}
+
+/* Size Section */
+.size-section {
+    background-color: var(--panel-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--panel-shadow);
+    border: 1px solid var(--border-color);
+    height: fit-content;
+}
+
+
+
+
+
+.size-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.size-mode-btn {
+    min-width: 80px !important;
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+}
+
+
+
+.dimension-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.dimension-control label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.dimension-input {
+    width: 80px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    background-color: var(--bg-light);
+    color: var(--text-color);
+}
+
+.dimension-input:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+    border-color: var(--accent-color);
+}
+
+.hidden {
+    display: none !important;
+}

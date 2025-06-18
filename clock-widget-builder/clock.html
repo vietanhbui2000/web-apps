@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock</title>
+    <style>
+        /* Clock-only styles */
+        :root {
+            --text-color: #333333;
+            --accent-color: #007acc;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            
+            /* Dynamic variables controlled by URL parameters */
+            --bg-color: transparent;
+            --time-font-size: 3rem;
+            --date-font-size: 1.125rem;
+            --time-color: #007acc;
+            --date-color: #333333;
+            --text-align: center;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: transparent;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .clock-container {
+            background-color: var(--bg-color);
+            padding: 2rem;
+            text-align: var(--text-align);
+            transition: all 0.3s ease;
+        }
+
+        .clock-time {
+            font-size: var(--time-font-size);
+            font-weight: 700;
+            color: var(--time-color);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .clock-date {
+            font-size: var(--date-font-size);
+            color: var(--date-color);
+            opacity: 0.8;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        /* Colon blinking animation */
+        .blink-colons .colon {
+            animation: blinkColons 1s infinite;
+        }
+
+        @keyframes blinkColons {
+            0%, 50% {
+                opacity: 1;
+            }
+            51%, 100% {
+                opacity: 0.3;
+            }
+        }
+
+        /* Alignment classes */
+        .align-left {
+            --text-align: left;
+        }
+
+        .align-center {
+            --text-align: center;
+        }
+
+        .align-right {
+            --text-align: right;
+        }
+
+        /* Frame styling is now handled by iframe style attributes */
+
+        /* Font size variations */
+        .time-size-1 { --time-font-size: 1.5rem; }
+        .time-size-2 { --time-font-size: 2rem; }
+        .time-size-3 { --time-font-size: 3rem; }
+        .time-size-4 { --time-font-size: 4rem; }
+        .time-size-5 { --time-font-size: 5rem; }
+
+        .date-size-1 { --date-font-size: 0.75rem; }
+        .date-size-2 { --date-font-size: 0.875rem; }
+        .date-size-3 { --date-font-size: 1.125rem; }
+        .date-size-4 { --date-font-size: 1.375rem; }
+        .date-size-5 { --date-font-size: 1.625rem; }
+
+        /* Font styling variations */
+        .time-bold .clock-time {
+            font-weight: 900;
+        }
+
+        .time-italic .clock-time {
+            font-style: italic;
+        }
+
+        .date-bold .clock-date {
+            font-weight: 700;
+        }
+
+        .date-italic .clock-date {
+            font-style: italic;
+        }
+
+        /* Responsive design */
+        @media (max-width: 400px) {
+            .clock-container {
+                padding: 1rem;
+            }
+        }
+        
+        /* Container always fills iframe optimally */
+        .clock-container {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="clock-container" id="clock-container">
+        <time id="clock-time" class="clock-time" datetime="">
+            00:00:00
+        </time>
+        <div id="clock-date" class="clock-date">
+            Loading...
+        </div>
+    </div>
+
+    <script>
+        class Clock {
+            constructor() {
+                this.timeElement = document.getElementById('clock-time');
+                this.dateElement = document.getElementById('clock-date');
+                this.container = document.getElementById('clock-container');
+                
+                // Parse URL parameters
+                this.parseUrlParams();
+                
+                // Apply settings
+                this.applySettings();
+                
+                // Start clock
+                this.updateTime();
+                this.startClock();
+            }
+            
+            parseUrlParams() {
+                const params = new URLSearchParams(window.location.search);
+                
+                this.is24HourFormat = params.get('format') === '24h';
+                this.showSeconds = params.get('seconds') === 'true';
+                this.blinkColons = params.get('blink') === 'true';
+                this.textAlignment = params.get('align') || 'center';
+                this.backgroundColor = params.get('bg') || 'transparent';
+                this.timeColor = params.get('timeColor') || '#007acc';
+                this.dateColor = params.get('dateColor') || '#333333';
+                this.timeFontSize = parseInt(params.get('timeSize')) || 3;
+                this.dateFontSize = parseInt(params.get('dateSize')) || 3;
+                this.timeBold = params.get('timeBold') === 'true';
+                this.timeItalic = params.get('timeItalic') === 'true';
+                this.dateBold = params.get('dateBold') === 'true';
+                this.dateItalic = params.get('dateItalic') === 'true';
+                // Frame styling is now handled by iframe style attributes
+                
+                // Size is handled by iframe dimensions, no parameters needed
+            }
+            
+            applySettings() {
+                // Apply alignment
+                this.container.classList.remove('align-left', 'align-center', 'align-right');
+                this.container.classList.add(`align-${this.textAlignment}`);
+                
+                // Apply background
+                if (this.backgroundColor !== 'transparent') {
+                    document.documentElement.style.setProperty('--bg-color', decodeURIComponent(this.backgroundColor));
+                }
+                
+                // Apply text colors
+                document.documentElement.style.setProperty('--time-color', decodeURIComponent(this.timeColor));
+                document.documentElement.style.setProperty('--date-color', decodeURIComponent(this.dateColor));
+                
+                // Apply font sizes
+                for (let i = 1; i <= 5; i++) {
+                    this.container.classList.remove(`time-size-${i}`, `date-size-${i}`);
+                }
+                this.container.classList.add(`time-size-${this.timeFontSize}`);
+                this.container.classList.add(`date-size-${this.dateFontSize}`);
+                
+                // Frame styling is now handled by iframe style attributes
+                
+                // Apply blinking
+                if (this.blinkColons) {
+                    document.body.classList.add('blink-colons');
+                }
+                
+                // Apply font styling
+                if (this.timeBold) {
+                    this.container.classList.add('time-bold');
+                }
+                if (this.timeItalic) {
+                    this.container.classList.add('time-italic');
+                }
+                if (this.dateBold) {
+                    this.container.classList.add('date-bold');
+                }
+                if (this.dateItalic) {
+                    this.container.classList.add('date-italic');
+                }
+                
+                // Apply container sizing
+                this.applyContainerSizing();
+            }
+            
+            applyContainerSizing() {
+                const body = document.body;
+                const container = this.container;
+                
+                // Always fill the iframe container optimally
+                container.style.width = '100%';
+                container.style.height = '100%';
+                container.style.maxWidth = 'none';
+                container.style.minWidth = '200px';
+                body.style.padding = '0';
+                body.style.minHeight = '100vh';
+                body.style.display = 'flex';
+                body.style.alignItems = 'center';
+                body.style.justifyContent = 'center';
+            }
+            
+            startClock() {
+                setInterval(() => {
+                    this.updateTime();
+                }, 1000);
+            }
+            
+            updateTime() {
+                const now = new Date();
+                
+                // Update time display
+                const timeString = this.formatTime(now);
+                if (this.blinkColons) {
+                    this.timeElement.innerHTML = timeString;
+                } else {
+                    this.timeElement.textContent = timeString;
+                }
+                this.timeElement.setAttribute('datetime', now.toISOString());
+                
+                // Update date display
+                const dateString = this.formatDate(now);
+                this.dateElement.textContent = dateString;
+            }
+            
+            formatTime(date) {
+                let options = {
+                    hour12: !this.is24HourFormat,
+                    hour: this.is24HourFormat ? '2-digit' : 'numeric',
+                    minute: '2-digit'
+                };
+                
+                if (this.showSeconds) {
+                    options.second = '2-digit';
+                }
+                
+                let timeString = date.toLocaleTimeString('en-US', options);
+                
+                // Wrap colons in spans for blinking animation
+                if (this.blinkColons) {
+                    timeString = timeString.replace(/:/g, '<span class="colon">:</span>');
+                }
+                
+                return timeString;
+            }
+            
+            formatDate(date) {
+                const options = {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                };
+                
+                return date.toLocaleDateString('en-US', options);
+            }
+        }
+
+        // Initialize clock when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new Clock();
+        });
+    </script>
+</body>
+</html> 
