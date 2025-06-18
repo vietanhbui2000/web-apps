@@ -1,18 +1,77 @@
 class TimeWidget {
+    // Constants for better maintainability
+    static CONSTANTS = {
+        FONT_SIZE: {
+            MIN: 1,
+            MAX: 5,
+            DEFAULT: 3
+        },
+        DIMENSIONS: {
+            WIDTH: { MIN: 200, MAX: 800, DEFAULT: 340 },
+            HEIGHT: { MIN: 100, MAX: 400, DEFAULT: 120 }
+        },
+        DEBOUNCE_DELAY: 150,
+        SIZE_MULTIPLIERS: {
+            TIME: { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 },
+            DATE: { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 }
+        },
+        BASE_WIDTHS: {
+            TIME_12H: 140,
+            TIME_24H: 120,
+            SECONDS_ADDITION: 60,
+            DATE_FULL: 280
+        },
+        DEFAULTS: {
+            IS_24_HOUR: false,
+            SHOW_SECONDS: false,
+            BLINK_COLONS: false,
+            TEXT_ALIGNMENT: 'center',
+            BACKGROUND_COLOR: 'transparent',
+            TIME_COLOR: '#007acc',
+            DATE_COLOR: '#333333',
+            SHOW_FRAME: false,
+            ROUNDED_CORNERS: false,
+            SHOW_SHADOW: false,
+            SIZE_MODE: 'adaptive'
+        },
+        VALID_ALIGNMENTS: ['left', 'center', 'right'],
+        VALID_SIZE_MODES: ['adaptive', 'fixed'],
+        COLOR_PATTERNS: {
+            HEX: /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/,
+            RGB: /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/,
+            RGBA: /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/
+        },
+        STORAGE_KEY: 'timeWidget_preferences',
+        COPY_FEEDBACK_DURATION: 2000
+    };
+
     constructor() {
-        // Settings
-        this.is24HourFormat = false;
-        this.showSeconds = false;
-        this.blinkColons = false;
-        this.textAlignment = 'center';
-        this.backgroundColor = 'transparent';
-        this.timeColor = '#007acc';
-        this.dateColor = '#333333';
-        this.timeFontSize = 3;
-        this.dateFontSize = 3;
-        this.showFrame = false;
-        this.roundedCorners = false;
-        this.showShadow = false;
+        // Initialize settings with defaults
+        this.initializeSettings();
+        
+        // Debouncing for updates
+        this.updateDebounceTimer = null;
+        
+        // Cache DOM elements to avoid repeated queries
+        this.elements = this.cacheElements();
+        
+        this.init();
+    }
+
+    initializeSettings() {
+        const defaults = TimeWidget.CONSTANTS.DEFAULTS;
+        this.is24HourFormat = defaults.IS_24_HOUR;
+        this.showSeconds = defaults.SHOW_SECONDS;
+        this.blinkColons = defaults.BLINK_COLONS;
+        this.textAlignment = defaults.TEXT_ALIGNMENT;
+        this.backgroundColor = defaults.BACKGROUND_COLOR;
+        this.timeColor = defaults.TIME_COLOR;
+        this.dateColor = defaults.DATE_COLOR;
+        this.timeFontSize = TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT;
+        this.dateFontSize = TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT;
+        this.showFrame = defaults.SHOW_FRAME;
+        this.roundedCorners = defaults.ROUNDED_CORNERS;
+        this.showShadow = defaults.SHOW_SHADOW;
         
         // Font styling options
         this.timeBold = false;
@@ -21,52 +80,59 @@ class TimeWidget {
         this.dateItalic = false;
         
         // Size options
-        this.sizeMode = 'adaptive'; // 'adaptive', 'fixed'
-        this.widgetWidth = 340;
-        this.widgetHeight = 120;
-        
-        // DOM elements - controls
-        this.formatToggle = document.getElementById('format-toggle');
-        this.secondsToggle = document.getElementById('seconds-toggle');
-        this.blinkToggle = document.getElementById('blink-toggle');
-        
-        this.alignLeft = document.getElementById('align-left');
-        this.alignCenter = document.getElementById('align-center');
-        this.alignRight = document.getElementById('align-right');
-        
-        this.bgTransparent = document.getElementById('bg-transparent');
-        this.bgColorPicker = document.getElementById('bg-color-picker');
-        
-        this.timeColorPicker = document.getElementById('time-color-picker');
-        this.dateColorPicker = document.getElementById('date-color-picker');
-        
-        this.timeSizeSlider = document.getElementById('time-size');
-        this.dateSizeSlider = document.getElementById('date-size');
-        
-        // Font styling controls
-        this.timeBoldBtn = document.getElementById('time-bold');
-        this.timeItalicBtn = document.getElementById('time-italic');
-        this.dateBoldBtn = document.getElementById('date-bold');
-        this.dateItalicBtn = document.getElementById('date-italic');
-        
-        this.frameToggle = document.getElementById('frame-toggle');
-        this.roundedToggle = document.getElementById('rounded-toggle');
-        this.shadowToggle = document.getElementById('shadow-toggle');
-        this.resetButton = document.getElementById('reset-all');
-        
-        // Size controls
-        this.sizeAdaptiveBtn = document.getElementById('size-adaptive');
-        this.sizeFixedBtn = document.getElementById('size-fixed');
-        this.fixedSizeControls = document.getElementById('fixed-size-controls');
-        this.widgetWidthInput = document.getElementById('widget-width');
-        this.widgetHeightInput = document.getElementById('widget-height');
-        
-        // DOM elements - preview and code
-        this.clockIframe = document.getElementById('clock-iframe');
-        this.codeTextarea = document.getElementById('code-textarea');
-        this.copyBtn = document.getElementById('copy-code');
-        
-        this.init();
+        this.sizeMode = defaults.SIZE_MODE;
+        this.widgetWidth = TimeWidget.CONSTANTS.DIMENSIONS.WIDTH.DEFAULT;
+        this.widgetHeight = TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT.DEFAULT;
+    }
+    
+    cacheElements() {
+        return {
+            // Format controls
+            formatToggle: document.getElementById('format-toggle'),
+            secondsToggle: document.getElementById('seconds-toggle'),
+            blinkToggle: document.getElementById('blink-toggle'),
+            
+            // Alignment controls
+            alignLeft: document.getElementById('align-left'),
+            alignCenter: document.getElementById('align-center'),
+            alignRight: document.getElementById('align-right'),
+            
+            // Background controls
+            bgTransparent: document.getElementById('bg-transparent'),
+            bgColorPicker: document.getElementById('bg-color-picker'),
+            
+            // Color controls
+            timeColorPicker: document.getElementById('time-color-picker'),
+            dateColorPicker: document.getElementById('date-color-picker'),
+            
+            // Size controls
+            timeSizeSlider: document.getElementById('time-size'),
+            dateSizeSlider: document.getElementById('date-size'),
+            
+            // Font styling controls
+            timeBoldBtn: document.getElementById('time-bold'),
+            timeItalicBtn: document.getElementById('time-italic'),
+            dateBoldBtn: document.getElementById('date-bold'),
+            dateItalicBtn: document.getElementById('date-italic'),
+            
+            // Frame controls
+            frameToggle: document.getElementById('frame-toggle'),
+            roundedToggle: document.getElementById('rounded-toggle'),
+            shadowToggle: document.getElementById('shadow-toggle'),
+            resetButton: document.getElementById('reset-all'),
+            
+            // Size mode controls
+            sizeAdaptiveBtn: document.getElementById('size-adaptive'),
+            sizeFixedBtn: document.getElementById('size-fixed'),
+            fixedSizeControls: document.getElementById('fixed-size-controls'),
+            widgetWidthInput: document.getElementById('widget-width'),
+            widgetHeightInput: document.getElementById('widget-height'),
+            
+            // Preview and code
+            clockIframe: document.getElementById('clock-iframe'),
+            codeTextarea: document.getElementById('code-textarea'),
+            copyBtn: document.getElementById('copy-code')
+        };
     }
     
     init() {
@@ -76,7 +142,7 @@ class TimeWidget {
         // Set up event listeners
         this.setupEventListeners();
         
-        // Update preview and code
+        // Apply saved preferences immediately (no debouncing on initial load)
         this.updatePreview();
         this.updateCode();
         
@@ -85,247 +151,185 @@ class TimeWidget {
     }
     
     setupEventListeners() {
+        const { elements } = this;
+        
         // Format and display controls
-        this.formatToggle.addEventListener('click', () => this.toggleTimeFormat());
-        this.secondsToggle.addEventListener('click', () => this.toggleSeconds());
-        this.blinkToggle.addEventListener('click', () => this.toggleBlink());
+        elements.formatToggle.addEventListener('click', () => this.toggle('is24HourFormat'));
+        elements.secondsToggle.addEventListener('click', () => this.toggle('showSeconds'));
+        elements.blinkToggle.addEventListener('click', () => this.toggle('blinkColons'));
         
         // Alignment controls
-        this.alignLeft.addEventListener('click', () => this.setAlignment('left'));
-        this.alignCenter.addEventListener('click', () => this.setAlignment('center'));
-        this.alignRight.addEventListener('click', () => this.setAlignment('right'));
+        elements.alignLeft.addEventListener('click', () => this.setAlignment('left'));
+        elements.alignCenter.addEventListener('click', () => this.setAlignment('center'));
+        elements.alignRight.addEventListener('click', () => this.setAlignment('right'));
         
         // Background controls
-        this.bgTransparent.addEventListener('click', () => this.setBackgroundTransparent());
-        this.bgColorPicker.addEventListener('input', (e) => this.setBackgroundColor(e.target.value));
+        elements.bgTransparent.addEventListener('click', () => this.setBackgroundTransparent());
+        elements.bgColorPicker.addEventListener('input', (e) => this.setBackgroundColor(e.target.value));
         
         // Text color controls
-        this.timeColorPicker.addEventListener('input', (e) => this.setTimeColor(e.target.value));
-        this.dateColorPicker.addEventListener('input', (e) => this.setDateColor(e.target.value));
+        elements.timeColorPicker.addEventListener('input', (e) => this.setTimeColor(e.target.value));
+        elements.dateColorPicker.addEventListener('input', (e) => this.setDateColor(e.target.value));
         
         // Font size controls
-        this.timeSizeSlider.addEventListener('input', (e) => this.setTimeFontSize(parseInt(e.target.value)));
-        this.dateSizeSlider.addEventListener('input', (e) => this.setDateFontSize(parseInt(e.target.value)));
+        elements.timeSizeSlider.addEventListener('input', (e) => this.setTimeFontSize(parseInt(e.target.value)));
+        elements.dateSizeSlider.addEventListener('input', (e) => this.setDateFontSize(parseInt(e.target.value)));
         
         // Font styling controls
-        this.timeBoldBtn.addEventListener('click', () => this.toggleTimeBold());
-        this.timeItalicBtn.addEventListener('click', () => this.toggleTimeItalic());
-        this.dateBoldBtn.addEventListener('click', () => this.toggleDateBold());
-        this.dateItalicBtn.addEventListener('click', () => this.toggleDateItalic());
+        elements.timeBoldBtn.addEventListener('click', () => this.toggle('timeBold'));
+        elements.timeItalicBtn.addEventListener('click', () => this.toggle('timeItalic'));
+        elements.dateBoldBtn.addEventListener('click', () => this.toggle('dateBold'));
+        elements.dateItalicBtn.addEventListener('click', () => this.toggle('dateItalic'));
         
         // Frame controls
-        this.frameToggle.addEventListener('click', () => this.toggleFrame());
-        this.roundedToggle.addEventListener('click', () => this.toggleRounded());
-        this.shadowToggle.addEventListener('click', () => this.toggleShadow());
+        elements.frameToggle.addEventListener('click', () => this.toggle('showFrame'));
+        elements.roundedToggle.addEventListener('click', () => this.toggleDependent('roundedCorners', 'showFrame'));
+        elements.shadowToggle.addEventListener('click', () => this.toggleDependent('showShadow', 'showFrame'));
         
         // Reset button
-        this.resetButton.addEventListener('click', () => this.resetAll());
+        elements.resetButton.addEventListener('click', () => this.resetAll());
         
         // Size controls
-        this.sizeAdaptiveBtn.addEventListener('click', () => this.setSizeMode('adaptive'));
-        this.sizeFixedBtn.addEventListener('click', () => this.setSizeMode('fixed'));
-        this.widgetWidthInput.addEventListener('input', (e) => this.setWidgetWidth(parseInt(e.target.value)));
-        this.widgetHeightInput.addEventListener('input', (e) => this.setWidgetHeight(parseInt(e.target.value)));
+        elements.sizeAdaptiveBtn.addEventListener('click', () => this.setSizeMode('adaptive'));
+        elements.sizeFixedBtn.addEventListener('click', () => this.setSizeMode('fixed'));
+        elements.widgetWidthInput.addEventListener('input', (e) => this.setWidgetWidth(parseInt(e.target.value)));
+        elements.widgetHeightInput.addEventListener('input', (e) => this.setWidgetHeight(parseInt(e.target.value)));
         
         // Copy button
-        this.copyBtn.addEventListener('click', () => this.copyCode());
+        elements.copyBtn.addEventListener('click', () => this.copyCode());
     }
     
-            // Note: The main builder interface doesn't need a live clock
-        // The clock display is handled by the iframe preview
+    // Debounced update to prevent excessive calls
+    debouncedUpdate() {
+        clearTimeout(this.updateDebounceTimer);
+        this.updateDebounceTimer = setTimeout(() => {
+            this.updatePreview();
+            this.updateCode();
+        }, TimeWidget.CONSTANTS.DEBOUNCE_DELAY);
+    }
     
-    // Toggle functions
-    toggleTimeFormat() {
-        this.is24HourFormat = !this.is24HourFormat;
+    // Consolidated toggle function
+    toggle(property) {
+        this[property] = !this[property];
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
         this.updateButtonStates();
     }
     
-    toggleSeconds() {
-        this.showSeconds = !this.showSeconds;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleBlink() {
-        this.blinkColons = !this.blinkColons;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleFrame() {
-        this.showFrame = !this.showFrame;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleRounded() {
-        if (!this.showFrame) return; // Don't allow toggling if frame is not enabled
-        this.roundedCorners = !this.roundedCorners;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleShadow() {
-        if (!this.showFrame) return; // Don't allow toggling if frame is not enabled
-        this.showShadow = !this.showShadow;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleTimeBold() {
-        this.timeBold = !this.timeBold;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleTimeItalic() {
-        this.timeItalic = !this.timeItalic;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleDateBold() {
-        this.dateBold = !this.dateBold;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
-    }
-    
-    toggleDateItalic() {
-        this.dateItalic = !this.dateItalic;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
-        this.updateButtonStates();
+    // Toggle function for dependent properties
+    toggleDependent(property, dependency) {
+        if (!this[dependency]) return;
+        this.toggle(property);
     }
     
     resetAll() {
         // Reset all options to defaults
-        this.is24HourFormat = false;
-        this.showSeconds = false;
-        this.blinkColons = false;
-        this.textAlignment = 'center';
-        this.backgroundColor = 'transparent';
-        this.timeColor = '#007acc';
-        this.dateColor = '#333333';
-        this.timeFontSize = 3;
-        this.dateFontSize = 3;
-        this.showFrame = false;
-        this.roundedCorners = false;
-        this.showShadow = false;
+        this.initializeSettings();
         
-        // Reset font styling
-        this.timeBold = false;
-        this.timeItalic = false;
-        this.dateBold = false;
-        this.dateItalic = false;
-        
-        // Reset size options
-        this.sizeMode = 'adaptive';
-        this.widgetWidth = 340;
-        this.widgetHeight = 120;
+        // Reset UI elements to default values
+        const defaults = TimeWidget.CONSTANTS.DEFAULTS;
+        this.elements.bgColorPicker.value = '#ffffff';
+        this.elements.timeColorPicker.value = defaults.TIME_COLOR;
+        this.elements.dateColorPicker.value = defaults.DATE_COLOR;
+        this.elements.timeSizeSlider.value = TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT;
+        this.elements.dateSizeSlider.value = TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT;
+        this.elements.widgetWidthInput.value = TimeWidget.CONSTANTS.DIMENSIONS.WIDTH.DEFAULT;
+        this.elements.widgetHeightInput.value = TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT.DEFAULT;
         
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
         this.updateButtonStates();
     }
     
     // Setting functions
     setAlignment(alignment) {
+        if (!TimeWidget.CONSTANTS.VALID_ALIGNMENTS.includes(alignment)) return;
         this.textAlignment = alignment;
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
         this.updateButtonStates();
     }
     
     setBackgroundTransparent() {
         this.backgroundColor = 'transparent';
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
         this.updateButtonStates();
     }
     
     setBackgroundColor(color) {
-        this.backgroundColor = color;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        if (this.isValidColor(color)) {
+            this.backgroundColor = color;
+            this.savePreferences();
+            this.debouncedUpdate();
+        }
     }
     
     setTimeColor(color) {
-        this.timeColor = color;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        if (this.isValidColor(color)) {
+            this.timeColor = color;
+            this.savePreferences();
+            this.debouncedUpdate();
+        }
     }
     
     setDateColor(color) {
-        this.dateColor = color;
-        this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        if (this.isValidColor(color)) {
+            this.dateColor = color;
+            this.savePreferences();
+            this.debouncedUpdate();
+        }
     }
     
     setTimeFontSize(size) {
-        this.timeFontSize = size;
+        const validSize = this.clampValue(
+            size, 
+            TimeWidget.CONSTANTS.FONT_SIZE.MIN, 
+            TimeWidget.CONSTANTS.FONT_SIZE.MAX, 
+            TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT
+        );
+        this.timeFontSize = validSize;
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
     }
     
     setDateFontSize(size) {
-        this.dateFontSize = size;
+        const validSize = this.clampValue(
+            size, 
+            TimeWidget.CONSTANTS.FONT_SIZE.MIN, 
+            TimeWidget.CONSTANTS.FONT_SIZE.MAX, 
+            TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT
+        );
+        this.dateFontSize = validSize;
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
     }
     
     // Size functions
     setSizeMode(mode) {
+        if (!TimeWidget.CONSTANTS.VALID_SIZE_MODES.includes(mode)) return;
         this.sizeMode = mode;
         this.savePreferences();
-        this.updatePreview();
-        this.updateCode();
+        this.debouncedUpdate();
         this.updateButtonStates();
         this.updateSizeControls();
     }
     
     setWidgetWidth(width) {
-        if (width >= 200 && width <= 800) {
+        const constants = TimeWidget.CONSTANTS.DIMENSIONS.WIDTH;
+        if (width >= constants.MIN && width <= constants.MAX) {
             this.widgetWidth = width;
             this.savePreferences();
-            this.updatePreview();
-            this.updateCode();
+            this.debouncedUpdate();
         }
     }
     
     setWidgetHeight(height) {
-        if (height >= 100 && height <= 400) {
+        const constants = TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT;
+        if (height >= constants.MIN && height <= constants.MAX) {
             this.widgetHeight = height;
             this.savePreferences();
-            this.updatePreview();
-            this.updateCode();
+            this.debouncedUpdate();
         }
     }
 
@@ -333,9 +337,9 @@ class TimeWidget {
     updateSizeControls() {
         // Show/hide size controls based on mode
         if (this.sizeMode === 'fixed') {
-            this.fixedSizeControls.classList.remove('hidden');
+            this.elements.fixedSizeControls.classList.remove('hidden');
         } else {
-            this.fixedSizeControls.classList.add('hidden');
+            this.elements.fixedSizeControls.classList.add('hidden');
         }
     }
     
@@ -361,22 +365,19 @@ class TimeWidget {
     }
     
     calculateTimeWidth() {
+        const constants = TimeWidget.CONSTANTS;
         // Base widths for different time formats (in pixels at font size 3)
-        let baseTimeWidth = 120; // Base for "12:34" format
-        
-        // Adjust for format type
-        if (!this.is24HourFormat) {
-            baseTimeWidth = 140; // "12:34 AM" is wider
-        }
+        let baseTimeWidth = this.is24HourFormat ? 
+            constants.BASE_WIDTHS.TIME_24H : 
+            constants.BASE_WIDTHS.TIME_12H;
         
         // Adjust for seconds display
         if (this.showSeconds) {
-            baseTimeWidth += 60; // ":45" addition
+            baseTimeWidth += constants.BASE_WIDTHS.SECONDS_ADDITION;
         }
         
         // Scale by time font size
-        const timeSizeMultipliers = { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 };
-        baseTimeWidth *= timeSizeMultipliers[this.timeFontSize] || 1.0;
+        baseTimeWidth *= constants.SIZE_MULTIPLIERS.TIME[this.timeFontSize] || 1.0;
         
         // Adjust for font styling (bold text is wider)
         if (this.timeBold) {
@@ -387,12 +388,12 @@ class TimeWidget {
     }
     
     calculateDateWidth() {
+        const constants = TimeWidget.CONSTANTS;
         // Base width for full date "Wednesday, December 25, 2024" at font size 3
-        let baseDateWidth = 280;
+        let baseDateWidth = constants.BASE_WIDTHS.DATE_FULL;
         
         // Scale by date font size
-        const dateSizeMultipliers = { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 };
-        baseDateWidth *= dateSizeMultipliers[this.dateFontSize] || 1.0;
+        baseDateWidth *= constants.SIZE_MULTIPLIERS.DATE[this.dateFontSize] || 1.0;
         
         // Adjust for font styling (bold text is wider)
         if (this.dateBold) {
@@ -403,15 +404,14 @@ class TimeWidget {
     }
     
     calculateAdaptiveHeight() {
+        const constants = TimeWidget.CONSTANTS;
         // Base height for time portion
         let timeHeight = 50;
-        const timeSizeMultipliers = { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 };
-        timeHeight *= timeSizeMultipliers[this.timeFontSize] || 1.0;
+        timeHeight *= constants.SIZE_MULTIPLIERS.TIME[this.timeFontSize] || 1.0;
         
         // Base height for date portion
         let dateHeight = 25;
-        const dateSizeMultipliers = { 1: 0.5, 2: 0.7, 3: 1.0, 4: 1.4, 5: 1.8 };
-        dateHeight *= dateSizeMultipliers[this.dateFontSize] || 1.0;
+        dateHeight *= constants.SIZE_MULTIPLIERS.DATE[this.dateFontSize] || 1.0;
         
         // Total height with spacing between time and date
         let totalHeight = timeHeight + dateHeight + 40; // 40px for spacing and padding
@@ -458,54 +458,50 @@ class TimeWidget {
     // Preview and code functions
     updatePreview() {
         const params = this.buildUrlParams();
-        this.clockIframe.src = `clock.html?${params}`;
+        this.elements.clockIframe.src = `clock.html?${params}`;
         
         // Update iframe dimensions based on size mode
         if (this.sizeMode === 'fixed') {
-            this.clockIframe.width = this.widgetWidth;
-            this.clockIframe.height = this.widgetHeight;
+            this.elements.clockIframe.width = this.widgetWidth;
+            this.elements.clockIframe.height = this.widgetHeight;
         } else {
             // Use calculated adaptive dimensions for preview
             const adaptiveWidth = this.calculateAdaptiveWidth();
             const adaptiveHeight = this.calculateAdaptiveHeight();
-            this.clockIframe.width = adaptiveWidth;
-            this.clockIframe.height = adaptiveHeight;
+            this.elements.clockIframe.width = adaptiveWidth;
+            this.elements.clockIframe.height = adaptiveHeight;
         }
         
         // Apply frame styling directly to preview iframe
-        this.applyFrameStyleToIframe(this.clockIframe);
+        this.applyFrameStyleToIframe(this.elements.clockIframe);
     }
     
     buildUrlParams() {
         const params = new URLSearchParams();
+        const defaults = TimeWidget.CONSTANTS.DEFAULTS;
         
-        // 1. Format controls (first section in interface)
-        if (this.is24HourFormat) params.set('format', '24h');
-        if (this.showSeconds) params.set('seconds', 'true');
-        if (this.blinkColons) params.set('blink', 'true');
-        
-        // 2. Alignment (second section in interface)
-        if (this.textAlignment !== 'center') params.set('align', this.textAlignment);
-        
-        // 3. Text Colors (third section in interface)
-        if (this.timeColor !== '#007acc') params.set('timeColor', encodeURIComponent(this.timeColor));
-        if (this.dateColor !== '#333333') params.set('dateColor', encodeURIComponent(this.dateColor));
-        
-        // 4. Font Styling (fourth section in interface)
+        // Only add non-default parameters to keep URL clean
+        if (this.is24HourFormat !== defaults.IS_24_HOUR) params.set('format', '24h');
+        if (this.showSeconds !== defaults.SHOW_SECONDS) params.set('seconds', 'true');
+        if (this.blinkColons !== defaults.BLINK_COLONS) params.set('blink', 'true');
+        if (this.textAlignment !== defaults.TEXT_ALIGNMENT) params.set('align', this.textAlignment);
+        if (this.timeColor !== defaults.TIME_COLOR) params.set('timeColor', this.timeColor);
+        if (this.dateColor !== defaults.DATE_COLOR) params.set('dateColor', this.dateColor);
         if (this.timeBold) params.set('timeBold', 'true');
         if (this.timeItalic) params.set('timeItalic', 'true');
         if (this.dateBold) params.set('dateBold', 'true');
         if (this.dateItalic) params.set('dateItalic', 'true');
+        if (this.timeFontSize !== TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT) {
+            params.set('timeSize', this.timeFontSize.toString());
+        }
+        if (this.dateFontSize !== TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT) {
+            params.set('dateSize', this.dateFontSize.toString());
+        }
         
-        // 5. Font Sizes (fifth section in interface)
-        if (this.timeFontSize !== 3) params.set('timeSize', this.timeFontSize.toString());
-        if (this.dateFontSize !== 3) params.set('dateSize', this.dateFontSize.toString());
-        
-        // 6. Background (sixth section in interface)
-        if (this.backgroundColor !== 'transparent') params.set('bg', encodeURIComponent(this.backgroundColor));
-        
-        // Note: Frame styling is now handled entirely by iframe style attributes
-        // Note: Size parameters not needed - iframe dimensions handle everything
+        // Background
+        if (this.backgroundColor !== defaults.BACKGROUND_COLOR) {
+            params.set('bg', encodeURIComponent(this.backgroundColor));
+        }
         
         return params.toString();
     }
@@ -534,111 +530,103 @@ class TimeWidget {
 </iframe>`;
         }
         
-        this.codeTextarea.value = iframeCode;
+        this.elements.codeTextarea.value = iframeCode;
     }
     
     async copyCode() {
         try {
-            await navigator.clipboard.writeText(this.codeTextarea.value);
-            
-            // Visual feedback - change text to "COPIED"
-            const originalText = this.copyBtn.textContent;
-            this.copyBtn.textContent = 'COPIED';
-            this.copyBtn.classList.add('copied');
-            
-            setTimeout(() => {
-                this.copyBtn.textContent = originalText;
-                this.copyBtn.classList.remove('copied');
-            }, 2000);
+            await navigator.clipboard.writeText(this.elements.codeTextarea.value);
+            this.showCopyFeedback();
         } catch (err) {
-            console.error('Failed to copy code:', err);
-            
             // Fallback: select text
-            this.codeTextarea.select();
-            this.codeTextarea.setSelectionRange(0, 99999);
+            this.elements.codeTextarea.select();
+            this.elements.codeTextarea.setSelectionRange(0, 99999);
             
             try {
                 document.execCommand('copy');
-                const originalText = this.copyBtn.textContent;
-                this.copyBtn.textContent = 'COPIED';
-                this.copyBtn.classList.add('copied');
-                
-                setTimeout(() => {
-                    this.copyBtn.textContent = originalText;
-                    this.copyBtn.classList.remove('copied');
-                }, 2000);
+                this.showCopyFeedback();
             } catch (fallbackErr) {
-                console.error('Fallback copy failed:', fallbackErr);
+                // Copy failed completely - could show user message here if needed
             }
         }
+    }
+
+    showCopyFeedback() {
+        // Visual feedback - change text to "COPIED"
+        const originalText = this.elements.copyBtn.textContent;
+        this.elements.copyBtn.textContent = 'COPIED';
+        this.elements.copyBtn.classList.add('copied');
+        
+        setTimeout(() => {
+            this.elements.copyBtn.textContent = originalText;
+            this.elements.copyBtn.classList.remove('copied');
+        }, TimeWidget.CONSTANTS.COPY_FEEDBACK_DURATION);
     }
     
     updateButtonStates() {
         // Format toggle
-        this.formatToggle.textContent = this.is24HourFormat ? '24H' : '12H';
-        this.formatToggle.classList.toggle('active', this.is24HourFormat);
+        this.elements.formatToggle.textContent = this.is24HourFormat ? '24H' : '12H';
+        this.elements.formatToggle.classList.toggle('active', this.is24HourFormat);
         
         // Seconds toggle
-        this.secondsToggle.classList.toggle('active', this.showSeconds);
+        this.elements.secondsToggle.classList.toggle('active', this.showSeconds);
         
         // Blink toggle
-        this.blinkToggle.classList.toggle('active', this.blinkColons);
+        this.elements.blinkToggle.classList.toggle('active', this.blinkColons);
         
         // Alignment buttons
-        this.alignLeft.classList.toggle('active', this.textAlignment === 'left');
-        this.alignCenter.classList.toggle('active', this.textAlignment === 'center');
-        this.alignRight.classList.toggle('active', this.textAlignment === 'right');
+        this.elements.alignLeft.classList.toggle('active', this.textAlignment === 'left');
+        this.elements.alignCenter.classList.toggle('active', this.textAlignment === 'center');
+        this.elements.alignRight.classList.toggle('active', this.textAlignment === 'right');
         
         // Background buttons
-        this.bgTransparent.classList.toggle('active', this.backgroundColor === 'transparent');
+        this.elements.bgTransparent.classList.toggle('active', this.backgroundColor === 'transparent');
         
         // Update color pickers
         if (this.backgroundColor !== 'transparent') {
-            this.bgColorPicker.value = this.backgroundColor;
+            this.elements.bgColorPicker.value = this.backgroundColor;
         }
-        this.timeColorPicker.value = this.timeColor;
-        this.dateColorPicker.value = this.dateColor;
+        this.elements.timeColorPicker.value = this.timeColor;
+        this.elements.dateColorPicker.value = this.dateColor;
         
         // Font size sliders
-        this.timeSizeSlider.value = this.timeFontSize;
-        this.dateSizeSlider.value = this.dateFontSize;
+        this.elements.timeSizeSlider.value = this.timeFontSize;
+        this.elements.dateSizeSlider.value = this.dateFontSize;
         
         // Font styling buttons
-        this.timeBoldBtn.classList.toggle('active', this.timeBold);
-        this.timeItalicBtn.classList.toggle('active', this.timeItalic);
-        this.dateBoldBtn.classList.toggle('active', this.dateBold);
-        this.dateItalicBtn.classList.toggle('active', this.dateItalic);
+        this.elements.timeBoldBtn.classList.toggle('active', this.timeBold);
+        this.elements.timeItalicBtn.classList.toggle('active', this.timeItalic);
+        this.elements.dateBoldBtn.classList.toggle('active', this.dateBold);
+        this.elements.dateItalicBtn.classList.toggle('active', this.dateItalic);
         
         // Frame toggles
-        this.frameToggle.classList.toggle('active', this.showFrame);
-        this.roundedToggle.classList.toggle('active', this.roundedCorners);
-        this.shadowToggle.classList.toggle('active', this.showShadow);
+        this.elements.frameToggle.classList.toggle('active', this.showFrame);
+        this.elements.roundedToggle.classList.toggle('active', this.roundedCorners);
+        this.elements.shadowToggle.classList.toggle('active', this.showShadow);
         
         // Disable/enable rounded and shadow toggles based on frame state
-        this.roundedToggle.disabled = !this.showFrame;
-        this.shadowToggle.disabled = !this.showFrame;
+        this.elements.roundedToggle.disabled = !this.showFrame;
+        this.elements.shadowToggle.disabled = !this.showFrame;
         if (!this.showFrame && this.roundedCorners) {
             this.roundedCorners = false;
             this.savePreferences();
-            this.updatePreview();
-            this.updateCode();
+            this.debouncedUpdate();
         }
         if (!this.showFrame && this.showShadow) {
             this.showShadow = false;
             this.savePreferences();
-            this.updatePreview();
-            this.updateCode();
+            this.debouncedUpdate();
         }
         
         // Size mode buttons
-        this.sizeAdaptiveBtn.classList.toggle('active', this.sizeMode === 'adaptive');
-        this.sizeFixedBtn.classList.toggle('active', this.sizeMode === 'fixed');
+        this.elements.sizeAdaptiveBtn.classList.toggle('active', this.sizeMode === 'adaptive');
+        this.elements.sizeFixedBtn.classList.toggle('active', this.sizeMode === 'fixed');
         
         // Update dimension inputs
-        this.widgetWidthInput.value = this.widgetWidth;
-        this.widgetHeightInput.value = this.widgetHeight;
+        this.elements.widgetWidthInput.value = this.widgetWidth;
+        this.elements.widgetHeightInput.value = this.widgetHeight;
         
-        // Update size controls visibility and description
+        // Update size controls visibility
         this.updateSizeControls();
     }
     
@@ -666,89 +654,116 @@ class TimeWidget {
                 widgetHeight: this.widgetHeight
             };
             
-            localStorage.setItem('timeWidget_preferences', JSON.stringify(preferences));
+            const serialized = JSON.stringify(preferences);
+            localStorage.setItem(TimeWidget.CONSTANTS.STORAGE_KEY, serialized);
         } catch (error) {
-            console.warn('Unable to save preferences to localStorage:', error);
+            // Silently handle localStorage errors - app should still function
+            // without persistence
         }
     }
     
     loadPreferences() {
         try {
-            const saved = localStorage.getItem('timeWidget_preferences');
-            if (saved) {
-                const preferences = JSON.parse(saved);
-                
-                this.is24HourFormat = preferences.is24HourFormat ?? false;
-                this.showSeconds = preferences.showSeconds ?? false;
-                this.blinkColons = preferences.blinkColons ?? false;
-                this.textAlignment = preferences.textAlignment ?? 'center';
-                this.backgroundColor = preferences.backgroundColor ?? 'transparent';
-                this.timeColor = preferences.timeColor ?? '#007acc';
-                this.dateColor = preferences.dateColor ?? '#333333';
-                this.timeFontSize = preferences.timeFontSize ?? 3;
-                this.dateFontSize = preferences.dateFontSize ?? 3;
-                this.showFrame = preferences.showFrame ?? false;
-                this.roundedCorners = preferences.roundedCorners ?? false;
-                this.showShadow = preferences.showShadow ?? false;
-                this.timeBold = preferences.timeBold ?? false;
-                this.timeItalic = preferences.timeItalic ?? false;
-                this.dateBold = preferences.dateBold ?? false;
-                this.dateItalic = preferences.dateItalic ?? false;
-                this.sizeMode = preferences.sizeMode ?? 'adaptive';
-                this.widgetWidth = preferences.widgetWidth ?? 340;
-                this.widgetHeight = preferences.widgetHeight ?? 120;
-            }
+            const saved = localStorage.getItem(TimeWidget.CONSTANTS.STORAGE_KEY);
+            if (!saved) return;
+            
+            const preferences = JSON.parse(saved);
+            
+            // Validate and assign preferences with fallbacks
+            this.is24HourFormat = Boolean(preferences.is24HourFormat);
+            this.showSeconds = Boolean(preferences.showSeconds);
+            this.blinkColons = Boolean(preferences.blinkColons);
+            this.textAlignment = TimeWidget.CONSTANTS.VALID_ALIGNMENTS.includes(preferences.textAlignment) 
+                ? preferences.textAlignment : TimeWidget.CONSTANTS.DEFAULTS.TEXT_ALIGNMENT;
+            this.backgroundColor = preferences.backgroundColor || TimeWidget.CONSTANTS.DEFAULTS.BACKGROUND_COLOR;
+            this.timeColor = this.isValidColor(preferences.timeColor) ? preferences.timeColor : TimeWidget.CONSTANTS.DEFAULTS.TIME_COLOR;
+            this.dateColor = this.isValidColor(preferences.dateColor) ? preferences.dateColor : TimeWidget.CONSTANTS.DEFAULTS.DATE_COLOR;
+            this.timeFontSize = this.clampValue(preferences.timeFontSize, 
+                TimeWidget.CONSTANTS.FONT_SIZE.MIN, 
+                TimeWidget.CONSTANTS.FONT_SIZE.MAX, 
+                TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT);
+            this.dateFontSize = this.clampValue(preferences.dateFontSize, 
+                TimeWidget.CONSTANTS.FONT_SIZE.MIN, 
+                TimeWidget.CONSTANTS.FONT_SIZE.MAX, 
+                TimeWidget.CONSTANTS.FONT_SIZE.DEFAULT);
+            this.showFrame = Boolean(preferences.showFrame);
+            this.roundedCorners = Boolean(preferences.roundedCorners);
+            this.showShadow = Boolean(preferences.showShadow);
+            this.timeBold = Boolean(preferences.timeBold);
+            this.timeItalic = Boolean(preferences.timeItalic);
+            this.dateBold = Boolean(preferences.dateBold);
+            this.dateItalic = Boolean(preferences.dateItalic);
+            this.sizeMode = TimeWidget.CONSTANTS.VALID_SIZE_MODES.includes(preferences.sizeMode) 
+                ? preferences.sizeMode : TimeWidget.CONSTANTS.DEFAULTS.SIZE_MODE;
+            this.widgetWidth = this.clampValue(preferences.widgetWidth, 
+                TimeWidget.CONSTANTS.DIMENSIONS.WIDTH.MIN, 
+                TimeWidget.CONSTANTS.DIMENSIONS.WIDTH.MAX, 
+                TimeWidget.CONSTANTS.DIMENSIONS.WIDTH.DEFAULT);
+            this.widgetHeight = this.clampValue(preferences.widgetHeight, 
+                TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT.MIN, 
+                TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT.MAX, 
+                TimeWidget.CONSTANTS.DIMENSIONS.HEIGHT.DEFAULT);
         } catch (error) {
-            console.warn('Unable to load preferences from localStorage:', error);
+            // Silently handle localStorage errors and use defaults
         }
+    }
+    
+    // Helper function to validate color strings
+    isValidColor(color) {
+        if (!color || typeof color !== 'string') return false;
+        const patterns = TimeWidget.CONSTANTS.COLOR_PATTERNS;
+        return color === 'transparent' || 
+               patterns.HEX.test(color) ||
+               patterns.RGB.test(color) ||
+               patterns.RGBA.test(color);
+    }
+    
+    // Helper function to clamp numeric values
+    clampValue(value, min, max, defaultValue) {
+        const num = parseInt(value);
+        if (isNaN(num)) return defaultValue;
+        return Math.max(min, Math.min(max, num));
     }
 }
 
-// Keyboard accessibility
+// Keyboard accessibility - optimized with better event handling
 document.addEventListener('keydown', (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    // Ignore if modifier keys are pressed or if user is typing in an input
+    if (event.altKey || event.ctrlKey || event.metaKey || 
+        event.target.matches('input, textarea, [contenteditable]')) {
+        return;
+    }
     
-    switch (event.key.toLowerCase()) {
-        case 't':
-            document.getElementById('format-toggle').click();
-            break;
-        case 's':
-            document.getElementById('seconds-toggle').click();
-            break;
-        case 'b':
-            document.getElementById('blink-toggle').click();
-            break;
-        case 'f':
-            document.getElementById('frame-toggle').click();
-            break;
-        case 'r':
-            document.getElementById('rounded-toggle').click();
-            break;
-        case 'w':
-            document.getElementById('shadow-toggle').click();
-            break;
-        case 'arrowleft':
-            document.getElementById('align-left').click();
-            break;
-        case 'arrowup':
-            document.getElementById('align-center').click();
-            break;
-        case 'arrowright':
-            document.getElementById('align-right').click();
-            break;
+    const keyMap = {
+        't': 'format-toggle',
+        's': 'seconds-toggle', 
+        'b': 'blink-toggle',
+        'f': 'frame-toggle',
+        'r': 'rounded-toggle',
+        'w': 'shadow-toggle',
+        'arrowleft': 'align-left',
+        'arrowup': 'align-center',
+        'arrowright': 'align-right'
+    };
+    
+    const elementId = keyMap[event.key.toLowerCase()];
+    if (elementId) {
+        event.preventDefault();
+        const element = document.getElementById(elementId);
+        if (element && !element.disabled) {
+            element.click();
+        }
     }
 });
 
 // Initialize the widget when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new TimeWidget();
-});
-
-// Handle visibility change to maintain performance
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        console.log('Clock builder hidden - continuing updates');
-    } else {
-        console.log('Clock builder visible - ensuring updates');
-    }
+    const widget = new TimeWidget();
+    
+    // Cleanup on page unload to prevent memory leaks
+    window.addEventListener('beforeunload', () => {
+        if (widget.updateDebounceTimer) {
+            clearTimeout(widget.updateDebounceTimer);
+        }
+    });
 }); 

@@ -12,16 +12,7 @@
     --bg-gray: #f8f9fa;
     --panel-bg: #ffffff;
     --panel-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    
-    /* Dynamic variables controlled by JavaScript */
-    --bg-color: transparent;
-    --time-font-size: 3rem;
-    --date-font-size: 1.125rem;
-    --time-color: #007acc;
-    --date-color: #333333;
-    --text-align: center;
-    --border-width: 0px;
-    --border-radius: 0px;
+    --focus-ring: 0 0 0 2px rgba(0, 122, 204, 0.3);
 }
 
 /* Reset and base styles */
@@ -36,6 +27,9 @@ body {
     background-color: var(--bg-gray);
     color: var(--text-color);
     line-height: 1.6;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* App layout */
@@ -59,13 +53,6 @@ body {
     color: var(--accent-color);
     margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
-}
-
-.app-subtitle {
-    font-size: 1rem;
-    color: var(--text-color);
-    opacity: 0.7;
-    font-weight: 500;
 }
 
 .app-main {
@@ -98,8 +85,9 @@ body {
     grid-row: 1 / -1;
 }
 
-/* Controls Panel */
-.controls-panel {
+/* Panel styling - consolidated for controls and size sections */
+.controls-panel,
+.size-section {
     background-color: var(--panel-bg);
     border-radius: 12px;
     padding: 1.5rem;
@@ -149,7 +137,8 @@ body {
     border-radius: 6px;
     background-color: transparent;
     max-width: 100%;
-    /* Maintain aspect ratio for responsive layouts */
+    border: 0;
+    display: block; /* Remove default inline spacing */
 }
 
 /* Code Section */
@@ -212,8 +201,11 @@ body {
     background-color: #28a745;
 }
 
-/* Original Controls Styles */
-.clock-widget__controls {
+
+
+/* Controls Styles */
+.clock-widget__controls,
+.size-controls {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -243,6 +235,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* Button styling - consolidated for all widget buttons */
 .clock-widget__button {
     background-color: var(--button-bg);
     border: 1px solid var(--border-color);
@@ -290,6 +283,7 @@ body {
     transform: none;
 }
 
+/* Specialized button styles */
 .reset-button {
     background-color: #ff6b6b;
     color: white;
@@ -307,26 +301,11 @@ body {
     border-color: #ff5252;
 }
 
-/* Font styling controls */
-.styling-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.375rem;
-    flex: 1;
-}
-
-.styling-label {
-    font-size: 0.625rem;
-    font-weight: 500;
-    color: var(--text-color);
-    opacity: 0.7;
-    text-transform: uppercase;
-}
-
-.styling-buttons {
-    display: flex;
-    gap: 0.25rem;
+.size-mode-btn {
+    min-width: 80px !important;
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
 }
 
 .style-btn {
@@ -341,7 +320,35 @@ body {
     font-weight: normal;
 }
 
-/* Color picker */
+/* Control-specific styling */
+.styling-control,
+.color-control,
+.size-control,
+.dimension-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.styling-label,
+.color-control label,
+.size-control label,
+.dimension-control label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-transform: uppercase;
+}
+
+.styling-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Color picker and option button styling */
 .color-picker {
     width: 55px;
     height: 36px;
@@ -362,29 +369,6 @@ body {
     border-radius: 4px;
 }
 
-/* Color controls */
-.color-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.375rem;
-    flex: 1;
-}
-
-.color-control label {
-    font-size: 0.625rem;
-    font-weight: 500;
-    color: var(--text-color);
-    opacity: 0.7;
-    text-transform: uppercase;
-}
-
-.color-control .color-picker {
-    width: 55px;
-    height: 36px;
-}
-
-/* Transparent background button */
 .color-option-btn {
     width: 55px;
     height: 36px;
@@ -409,6 +393,18 @@ body {
     padding: 1px;
 }
 
+.color-picker:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+.color-option-btn:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
 .transparent-indicator {
     width: 100%;
     height: 100%;
@@ -422,23 +418,7 @@ body {
     background-color: #ffffff;
 }
 
-/* Size controls */
-.size-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.375rem;
-    flex: 1;
-}
-
-.size-control label {
-    font-size: 0.625rem;
-    font-weight: 500;
-    color: var(--text-color);
-    opacity: 0.7;
-    text-transform: uppercase;
-}
-
+/* Range slider styling */
 .size-slider {
     width: 100%;
     max-width: 90px;
@@ -469,67 +449,42 @@ body {
     border: none;
 }
 
-/* Text alignment classes */
-.align-left {
-    --text-align: left;
+.size-slider:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
 }
 
-.align-center {
-    --text-align: center;
+.size-slider:focus::-webkit-slider-thumb {
+    box-shadow: var(--focus-ring);
 }
 
-.align-right {
-    --text-align: right;
+.size-slider:focus::-moz-range-thumb {
+    box-shadow: var(--focus-ring);
 }
 
-/* Frame options */
-.with-frame {
-    --border-width: 2px;
+/* Dimension input styling */
+.dimension-input {
+    width: 80px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    background-color: var(--bg-light);
+    color: var(--text-color);
 }
 
-.rounded {
-    --border-radius: 1rem;
+.dimension-input:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+    border-color: var(--accent-color);
+    box-shadow: var(--focus-ring);
 }
 
-/* Font size variations */
-.time-size-1 {
-    --time-font-size: 1.5rem;
-}
-
-.time-size-2 {
-    --time-font-size: 2rem;
-}
-
-.time-size-3 {
-    --time-font-size: 3rem;
-}
-
-.time-size-4 {
-    --time-font-size: 4rem;
-}
-
-.time-size-5 {
-    --time-font-size: 5rem;
-}
-
-.date-size-1 {
-    --date-font-size: 0.75rem;
-}
-
-.date-size-2 {
-    --date-font-size: 0.875rem;
-}
-
-.date-size-3 {
-    --date-font-size: 1.125rem;
-}
-
-.date-size-4 {
-    --date-font-size: 1.375rem;
-}
-
-.date-size-5 {
-    --date-font-size: 1.625rem;
+/* Utility classes */
+.hidden {
+    display: none !important;
 }
 
 /* Responsive design */
@@ -579,10 +534,6 @@ body {
         padding: 1rem 0.5rem;
     }
     
-    .reset-button {
-        margin-top: 1rem !important;
-    }
-    
     .app-header {
         padding: 1.5rem 1rem 1rem;
     }
@@ -592,11 +543,12 @@ body {
     }
     
     .controls-panel,
+    .size-section,
     .preview-section,
     .code-section {
         padding: 1rem;
     }
-        
+    
     .control-row {
         justify-content: center;
     }
@@ -607,22 +559,19 @@ body {
         min-width: 45px;
     }
     
+    .size-mode-btn {
+        min-width: 65px !important;
+        font-size: 0.625rem !important;
+        padding: 0.375rem 0.625rem !important;
+    }
+    
     .style-btn {
         min-width: 45px !important;
         padding: 0.375rem 0.625rem !important;
         font-size: 0.625rem !important;
     }
     
-    .color-picker {
-        width: 45px;
-        height: 32px;
-    }
-    
-    .color-control .color-picker {
-        width: 45px;
-        height: 32px;
-    }
-    
+    .color-picker,
     .color-option-btn {
         width: 45px;
         height: 32px;
@@ -631,12 +580,6 @@ body {
     .code-textarea {
         height: 100px;
         font-size: 0.625rem;
-    }
-    
-    .size-mode-btn {
-        min-width: 65px !important;
-        font-size: 0.625rem !important;
-        padding: 0.375rem 0.625rem !important;
     }
     
     .dimension-input {
@@ -650,21 +593,16 @@ body {
         gap: 1rem;
     }
     
-    .reset-button {
-        margin-top: 1rem !important;
-    }
-    
     .app-title {
         font-size: 1.75rem;
     }
     
     .controls-panel,
+    .size-section,
     .preview-section,
     .code-section {
         padding: 0.75rem;
     }
-    
-
     
     .control-group {
         gap: 0.5rem;
@@ -680,115 +618,21 @@ body {
         min-width: 40px;
     }
     
-    .style-btn {
-        min-width: 40px !important;
-        padding: 0.25rem 0.5rem !important;
-        font-size: 0.625rem !important;
-    }
-    
     .size-mode-btn {
         min-width: 60px !important;
         font-size: 0.625rem !important;
         padding: 0.25rem 0.5rem !important;
     }
     
-    .color-control .color-picker {
-        width: 45px;
-        height: 28px;
+    .style-btn {
+        min-width: 40px !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.625rem !important;
     }
     
+    .color-picker,
     .color-option-btn {
         width: 45px;
         height: 28px;
     }
-    
-
-}
-
-/* Animation for updates */
-.clock-widget__time,
-.clock-widget__date {
-    transition: font-size 0.3s ease;
-}
-
-/* Iframe optimization */
-@media (max-width: 350px) {
-    .clock-widget__container {
-        border-width: 1px;
-        padding: 0.75rem;
-    }
-    
-    .clock-widget__display {
-        margin-bottom: 1rem;
-    }
-    
-    .control-group {
-        gap: 0.25rem;
-    }
-}
-
-/* Size Section */
-.size-section {
-    background-color: var(--panel-bg);
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: var(--panel-shadow);
-    border: 1px solid var(--border-color);
-    height: fit-content;
-}
-
-
-
-
-
-.size-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.size-mode-btn {
-    min-width: 80px !important;
-    padding: 0.5rem 0.875rem !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-}
-
-
-
-.dimension-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.375rem;
-    flex: 1;
-}
-
-.dimension-control label {
-    font-size: 0.625rem;
-    font-weight: 500;
-    color: var(--text-color);
-    opacity: 0.7;
-    text-transform: uppercase;
-}
-
-.dimension-input {
-    width: 80px;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 0.75rem;
-    text-align: center;
-    background-color: var(--bg-light);
-    color: var(--text-color);
-}
-
-.dimension-input:focus {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
-    border-color: var(--accent-color);
-}
-
-.hidden {
-    display: none !important;
 }

@@ -36,6 +36,9 @@
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .clock-container {
@@ -64,7 +67,7 @@
             line-height: 1.2;
         }
 
-        /* Colon blinking animation */
+        /* Colon blinking animation - only affects colon spans */
         .blink-colons .colon {
             animation: blinkColons 1s infinite;
         }
@@ -154,10 +157,37 @@
 
     <script>
         class Clock {
+            // Constants for better maintainability
+            static CONSTANTS = {
+                FONT_SIZE: {
+                    MIN: 1,
+                    MAX: 5,
+                    DEFAULT: 3
+                },
+                UPDATE_INTERVAL: 1000,
+                VALID_ALIGNMENTS: ['left', 'center', 'right'],
+                DEFAULT_COLORS: {
+                    TIME: '#007acc',
+                    DATE: '#333333',
+                    BACKGROUND: 'transparent'
+                },
+                COLOR_PATTERNS: {
+                    HEX_3: /^#([0-9A-Fa-f]{3})$/,
+                    HEX_6: /^#([0-9A-Fa-f]{6})$/,
+                    RGB: /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/,
+                    RGBA: /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/
+                }
+            };
+
             constructor() {
                 this.timeElement = document.getElementById('clock-time');
                 this.dateElement = document.getElementById('clock-date');
                 this.container = document.getElementById('clock-container');
+                this.intervalId = null; // Track the interval for cleanup
+                
+                // Time tracking properties
+                this.currentTime = null; // Will hold the current time as Date object
+                this.isVisible = !document.hidden; // Track visibility state
                 
                 // Parse URL parameters
                 this.parseUrlParams();
@@ -165,30 +195,75 @@
                 // Apply settings
                 this.applySettings();
                 
-                // Start clock
-                this.updateTime();
-                this.startClock();
+                // Setup visibility handling
+                this.setupVisibilityHandling();
+                
+                // Start clock (will sync time and begin counting)
+                this.syncAndStartClock();
+                
+                // Add cleanup on page unload
+                window.addEventListener('beforeunload', () => this.cleanup());
+                window.addEventListener('pagehide', () => this.cleanup());
             }
             
             parseUrlParams() {
                 const params = new URLSearchParams(window.location.search);
                 
-                this.is24HourFormat = params.get('format') === '24h';
-                this.showSeconds = params.get('seconds') === 'true';
-                this.blinkColons = params.get('blink') === 'true';
-                this.textAlignment = params.get('align') || 'center';
-                this.backgroundColor = params.get('bg') || 'transparent';
-                this.timeColor = params.get('timeColor') || '#007acc';
-                this.dateColor = params.get('dateColor') || '#333333';
-                this.timeFontSize = parseInt(params.get('timeSize')) || 3;
-                this.dateFontSize = parseInt(params.get('dateSize')) || 3;
-                this.timeBold = params.get('timeBold') === 'true';
-                this.timeItalic = params.get('timeItalic') === 'true';
-                this.dateBold = params.get('dateBold') === 'true';
-                this.dateItalic = params.get('dateItalic') === 'true';
-                // Frame styling is now handled by iframe style attributes
+                this.is24HourFormat = this.parseBoolean(params.get('format'), '24h');
+                this.showSeconds = this.parseBoolean(params.get('seconds'), 'true');
+                this.blinkColons = this.parseBoolean(params.get('blink'), 'true');
+                this.textAlignment = this.validateAlignment(params.get('align')) || 'center';
+                this.backgroundColor = this.sanitizeColor(params.get('bg')) || Clock.CONSTANTS.DEFAULT_COLORS.BACKGROUND;
+                this.timeColor = this.sanitizeColor(params.get('timeColor')) || Clock.CONSTANTS.DEFAULT_COLORS.TIME;
+                this.dateColor = this.sanitizeColor(params.get('dateColor')) || Clock.CONSTANTS.DEFAULT_COLORS.DATE;
+                this.timeFontSize = this.validateFontSize(params.get('timeSize'));
+                this.dateFontSize = this.validateFontSize(params.get('dateSize'));
+                this.timeBold = this.parseBoolean(params.get('timeBold'), 'true');
+                this.timeItalic = this.parseBoolean(params.get('timeItalic'), 'true');
+                this.dateBold = this.parseBoolean(params.get('dateBold'), 'true');
+                this.dateItalic = this.parseBoolean(params.get('dateItalic'), 'true');
+            }
+
+            parseBoolean(value, trueValue) {
+                return value === trueValue;
+            }
+
+            validateFontSize(sizeStr) {
+                const size = parseInt(sizeStr);
+                if (isNaN(size)) return Clock.CONSTANTS.FONT_SIZE.DEFAULT;
+                return Math.max(
+                    Clock.CONSTANTS.FONT_SIZE.MIN, 
+                    Math.min(Clock.CONSTANTS.FONT_SIZE.MAX, size)
+                );
+            }
+            
+            validateAlignment(alignment) {
+                return Clock.CONSTANTS.VALID_ALIGNMENTS.includes(alignment) ? alignment : null;
+            }
+            
+            sanitizeColor(color) {
+                if (!color || typeof color !== 'string') return null;
                 
-                // Size is handled by iframe dimensions, no parameters needed
+                try {
+                    const decoded = decodeURIComponent(color);
+                    
+                    // Check for transparent
+                    if (decoded === 'transparent') return decoded;
+                    
+                    // Check for valid color patterns
+                    const patterns = Clock.CONSTANTS.COLOR_PATTERNS;
+                    if (patterns.HEX_3.test(decoded) || 
+                        patterns.HEX_6.test(decoded) ||
+                        patterns.RGB.test(decoded) || 
+                        patterns.RGBA.test(decoded)) {
+                        return decoded;
+                    }
+                } catch (e) {
+                    // Invalid URI component
+                    return null;
+                }
+                
+                return null;
             }
             
             applySettings() {
@@ -198,21 +273,15 @@
                 
                 // Apply background
                 if (this.backgroundColor !== 'transparent') {
-                    document.documentElement.style.setProperty('--bg-color', decodeURIComponent(this.backgroundColor));
+                    document.documentElement.style.setProperty('--bg-color', this.backgroundColor);
                 }
                 
                 // Apply text colors
-                document.documentElement.style.setProperty('--time-color', decodeURIComponent(this.timeColor));
-                document.documentElement.style.setProperty('--date-color', decodeURIComponent(this.dateColor));
+                document.documentElement.style.setProperty('--time-color', this.timeColor);
+                document.documentElement.style.setProperty('--date-color', this.dateColor);
                 
                 // Apply font sizes
-                for (let i = 1; i <= 5; i++) {
-                    this.container.classList.remove(`time-size-${i}`, `date-size-${i}`);
-                }
-                this.container.classList.add(`time-size-${this.timeFontSize}`);
-                this.container.classList.add(`date-size-${this.dateFontSize}`);
-                
-                // Frame styling is now handled by iframe style attributes
+                this.applyFontSizes();
                 
                 // Apply blinking
                 if (this.blinkColons) {
@@ -220,21 +289,33 @@
                 }
                 
                 // Apply font styling
-                if (this.timeBold) {
-                    this.container.classList.add('time-bold');
-                }
-                if (this.timeItalic) {
-                    this.container.classList.add('time-italic');
-                }
-                if (this.dateBold) {
-                    this.container.classList.add('date-bold');
-                }
-                if (this.dateItalic) {
-                    this.container.classList.add('date-italic');
-                }
+                this.applyFontStyling();
                 
                 // Apply container sizing
                 this.applyContainerSizing();
+            }
+
+            applyFontSizes() {
+                for (let i = Clock.CONSTANTS.FONT_SIZE.MIN; i <= Clock.CONSTANTS.FONT_SIZE.MAX; i++) {
+                    this.container.classList.remove(`time-size-${i}`, `date-size-${i}`);
+                }
+                this.container.classList.add(`time-size-${this.timeFontSize}`);
+                this.container.classList.add(`date-size-${this.dateFontSize}`);
+            }
+
+            applyFontStyling() {
+                const fontStyles = [
+                    [this.timeBold, 'time-bold'],
+                    [this.timeItalic, 'time-italic'],
+                    [this.dateBold, 'date-bold'],
+                    [this.dateItalic, 'date-italic']
+                ];
+                
+                fontStyles.forEach(([condition, className]) => {
+                    if (condition) {
+                        this.container.classList.add(className);
+                    }
+                });
             }
             
             applyContainerSizing() {
@@ -242,42 +323,117 @@
                 const container = this.container;
                 
                 // Always fill the iframe container optimally
-                container.style.width = '100%';
-                container.style.height = '100%';
-                container.style.maxWidth = 'none';
-                container.style.minWidth = '200px';
-                body.style.padding = '0';
-                body.style.minHeight = '100vh';
-                body.style.display = 'flex';
-                body.style.alignItems = 'center';
-                body.style.justifyContent = 'center';
+                Object.assign(container.style, {
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: 'none',
+                    minWidth: '200px'
+                });
+                
+                Object.assign(body.style, {
+                    padding: '0',
+                    minHeight: '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                });
             }
             
-            startClock() {
-                setInterval(() => {
-                    this.updateTime();
-                }, 1000);
+            setupVisibilityHandling() {
+                document.addEventListener('visibilitychange', () => {
+                    const wasVisible = this.isVisible;
+                    this.isVisible = !document.hidden;
+                    
+                    if (!wasVisible && this.isVisible) {
+                        // Page became visible - resync time and restart
+                        this.syncAndStartClock();
+                    } else if (wasVisible && !this.isVisible) {
+                        // Page became hidden - stop counting
+                        this.cleanup();
+                    }
+                });
             }
             
-            updateTime() {
-                const now = new Date();
+            syncAndStartClock() {
+                if (!this.isVisible) return;
+                
+                // Sync with system time
+                this.currentTime = new Date();
+                
+                // Update display immediately
+                this.updateDisplay();
+                
+                // Start counting
+                this.startCounting();
+            }
+            
+            startCounting() {
+                // Clear any existing interval
+                this.cleanup();
+                
+                if (!this.isVisible) return;
+                
+                this.intervalId = setInterval(() => {
+                    if (!this.isVisible) {
+                        this.cleanup();
+                        return;
+                    }
+                    
+                    // Advance time by 1 second
+                    this.currentTime.setSeconds(this.currentTime.getSeconds() + 1);
+                    
+                    // Update display
+                    this.updateDisplay();
+                }, Clock.CONSTANTS.UPDATE_INTERVAL);
+            }
+            
+            cleanup() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+            }
+            
+            updateDisplay() {
+                if (!this.currentTime) return;
                 
                 // Update time display
-                const timeString = this.formatTime(now);
-                if (this.blinkColons) {
-                    this.timeElement.innerHTML = timeString;
-                } else {
-                    this.timeElement.textContent = timeString;
-                }
-                this.timeElement.setAttribute('datetime', now.toISOString());
+                const timeString = this.formatTime(this.currentTime);
+                this.updateTimeDisplay(timeString);
+                this.timeElement.setAttribute('datetime', this.currentTime.toISOString());
                 
                 // Update date display
-                const dateString = this.formatDate(now);
+                const dateString = this.formatDate(this.currentTime);
                 this.dateElement.textContent = dateString;
             }
             
+            updateTimeDisplay(timeString) {
+                // Clear previous content
+                this.timeElement.textContent = '';
+                
+                if (this.blinkColons) {
+                    // Safely create spans for colons without innerHTML
+                    const parts = timeString.split(':');
+                    for (let i = 0; i < parts.length; i++) {
+                        // Add the time part
+                        this.timeElement.appendChild(document.createTextNode(parts[i]));
+                        
+                        // Add colon with blinking class (except for last part)
+                        if (i < parts.length - 1) {
+                            const colonSpan = document.createElement('span');
+                            colonSpan.className = 'colon';
+                            colonSpan.textContent = ':';
+                            this.timeElement.appendChild(colonSpan);
+                        }
+                    }
+                } else {
+                    // No blinking - just set text content
+                    this.timeElement.textContent = timeString;
+                }
+            }
+            
             formatTime(date) {
-                let options = {
+                const options = {
                     hour12: !this.is24HourFormat,
                     hour: this.is24HourFormat ? '2-digit' : 'numeric',
                     minute: '2-digit'
@@ -287,14 +443,7 @@
                     options.second = '2-digit';
                 }
                 
-                let timeString = date.toLocaleTimeString('en-US', options);
-                
-                // Wrap colons in spans for blinking animation
-                if (this.blinkColons) {
-                    timeString = timeString.replace(/:/g, '<span class="colon">:</span>');
-                }
-                
-                return timeString;
+                return date.toLocaleTimeString('en-US', options);
             }
             
             formatDate(date) {

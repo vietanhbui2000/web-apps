@@ -56,12 +56,12 @@
                             <label class="control-label">Text Colors</label>
                             <div class="control-row">
                                 <div class="color-control">
-                                    <label for="time-color">Time</label>
-                                    <input type="color" id="time-color-picker" class="color-picker" value="#007acc" aria-label="Time text color">
+                                    <label for="time-color-picker">Time</label>
+                                    <input type="color" id="time-color-picker" class="color-picker" value="#007acc" aria-label="Time text color" aria-describedby="time-color-desc">
                                 </div>
                                 <div class="color-control">
-                                    <label for="date-color">Date</label>
-                                    <input type="color" id="date-color-picker" class="color-picker" value="#333333" aria-label="Date text color">
+                                    <label for="date-color-picker">Date</label>
+                                    <input type="color" id="date-color-picker" class="color-picker" value="#333333" aria-label="Date text color" aria-describedby="date-color-desc">
                                 </div>
                             </div>
                         </div>
@@ -101,11 +101,11 @@
                             <div class="control-row">
                                 <div class="size-control">
                                     <label for="time-size">Time</label>
-                                    <input type="range" id="time-size" min="1" max="5" value="3" class="size-slider">
+                                    <input type="range" id="time-size" min="1" max="5" value="3" class="size-slider" aria-label="Time font size" aria-describedby="time-size-desc">
                                 </div>
                                 <div class="size-control">
                                     <label for="date-size">Date</label>
-                                    <input type="range" id="date-size" min="1" max="5" value="3" class="size-slider">
+                                    <input type="range" id="date-size" min="1" max="5" value="3" class="size-slider" aria-label="Date font size" aria-describedby="date-size-desc">
                                 </div>
                             </div>
                         </div>
@@ -116,13 +116,13 @@
                             <div class="control-row">
                                 <div class="color-control">
                                     <label for="bg-transparent">Transparent</label>
-                                    <button id="bg-transparent" class="color-option-btn active" aria-label="Transparent background">
+                                    <button id="bg-transparent" class="color-option-btn active" aria-label="Transparent background" aria-pressed="true">
                                         <div class="transparent-indicator"></div>
                                     </button>
                                 </div>
                                 <div class="color-control">
-                                    <label for="bg-color">Custom</label>
-                                    <input type="color" id="bg-color-picker" class="color-picker" value="#ffffff" aria-label="Background color">
+                                    <label for="bg-color-picker">Custom</label>
+                                    <input type="color" id="bg-color-picker" class="color-picker" value="#ffffff" aria-label="Background color" aria-describedby="bg-color-desc">
                                 </div>
                             </div>
                         </div>
@@ -185,7 +185,7 @@
                     <div class="preview-section">
                         <h3 class="section-title">Preview</h3>
                         <div class="clock-preview">
-                            <iframe id="clock-iframe" src="clock.html" width="100%" height="200" frameborder="0"></iframe>
+                            <iframe id="clock-iframe" src="clock.html" width="100%" height="200" title="Clock Widget Preview"></iframe>
                         </div>
                     </div>
                     
