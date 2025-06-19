@@ -2,6 +2,22 @@
 const TOTP_INTERVAL = 30; // seconds
 const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
+// Production-ready logging - reduce console noise in production
+const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '';
+const logger = {
+    info: (message, ...args) => {
+        if (isDevelopment) {
+            console.log(message, ...args);
+        }
+    },
+    warn: (message, ...args) => {
+        console.warn(message, ...args);
+    },
+    error: (message, ...args) => {
+        console.error(message, ...args);
+    }
+};
+
 // State management
 let accounts = [];
 let editingIndex = -1;
@@ -98,7 +114,7 @@ function initializeTiming() {
         startupTime = now;
         startupTimeLeft = TOTP_INTERVAL - (now % TOTP_INTERVAL);
         
-        console.log(`Timing initialized - Current time: ${now}, Time left in cycle: ${startupTimeLeft}s`);
+        logger.info(`Timing initialized - Current time: ${now}, Time left in cycle: ${startupTimeLeft}s`);
         
         // Update display immediately
         updateTimersDisplay();
@@ -126,15 +142,15 @@ function startTimerIfVisible() {
     // Only start timer if page is visible
     if (isPageVisible) {
         internalTimer = setInterval(updateTimersDisplay, 100);
-        console.log('Timer started - page is visible');
+        logger.info('Timer started - page is visible');
     } else {
-        console.log('Timer not started - page is hidden');
+        logger.info('Timer not started - page is hidden');
     }
 }
 
 // Pause the app when page becomes hidden
 function pauseApp() {
-    console.log('App pausing - page hidden');
+    logger.info('App pausing - page hidden');
     
     // Stop the timer
     if (internalTimer) {
@@ -149,18 +165,18 @@ function pauseApp() {
 
 // Resume the app when page becomes visible
 function resumeApp() {
-    console.log('App resuming - page visible');
+    logger.info('App resuming - page visible');
     
     isPageVisible = true;
     
     // Calculate how long we were hidden
     const hiddenDuration = wasHiddenTime ? (Date.now() - wasHiddenTime) / 1000 : 0;
-    console.log(`Was hidden for ${hiddenDuration.toFixed(1)} seconds`);
+    logger.info(`Was hidden for ${hiddenDuration.toFixed(1)} seconds`);
     
     // If we were hidden for more than 1 second, resync timing
     // This handles cases where system was suspended or significant time passed
     if (hiddenDuration > 1) {
-        console.log('Resyncing timing after being hidden');
+        logger.info('Resyncing timing after being hidden');
         showToast('Resyncing time...', 'info', 1500);
         initializeTiming();
     } else {
@@ -255,7 +271,7 @@ function base32ToHex(base32) {
     // Convert to hex
     let hex = '';
     for (let i = 0; i < bits.length; i += 8) {
-        const chunk = bits.substr(i, 8);
+        const chunk = bits.substring(i, i + 8);
         hex += parseInt(chunk, 2).toString(16).padStart(2, '0');
     }
     return hex;
@@ -297,7 +313,7 @@ function generateTOTP(secret) {
         const offset = parseInt(hmacHex.slice(-1), 16);
         
         // Generate 4-byte code starting at offset
-        const codeHex = hmacHex.substr(offset * 2, 8);
+        const codeHex = hmacHex.substring(offset * 2, offset * 2 + 8);
         let code = parseInt(codeHex, 16) & 0x7fffffff;
         
         // Get 6-digit code
@@ -313,12 +329,44 @@ function generateTOTP(secret) {
 function loadAccounts() {
     try {
         const saved = localStorage.getItem('totpAccounts');
-        accounts = saved ? JSON.parse(saved) : [];
+        if (saved) {
+            // Validate JSON before parsing
+            if (typeof saved !== 'string' || saved.trim() === '') {
+                throw new Error('Invalid stored data format');
+            }
+            
+            const parsedAccounts = JSON.parse(saved);
+            
+            // Validate that parsed data is an array
+            if (!Array.isArray(parsedAccounts)) {
+                throw new Error('Stored accounts data is not an array');
+            }
+            
+            // Validate each account object
+            accounts = parsedAccounts.filter(account => {
+                return account && 
+                       typeof account === 'object' && 
+                       typeof account.name === 'string' && 
+                       typeof account.secret === 'string' &&
+                       account.name.length > 0 &&
+                       account.secret.length > 0;
+            });
+            
+            // Warn if some accounts were filtered out
+            if (accounts.length !== parsedAccounts.length) {
+                const filteredCount = parsedAccounts.length - accounts.length;
+                logger.warn(`Filtered out ${filteredCount} corrupted account(s)`);
+                showToast(`Warning: ${filteredCount} corrupted accounts were skipped`, 'warning', 4000);
+            }
+        } else {
+            accounts = [];
+        }
+        
         updateAccountsDisplay();
         updateAllCodes();
     } catch (error) {
         console.error('Error loading accounts:', error);
-        showToast('Failed to load accounts', 'error', 3000);
+        showToast('Failed to load accounts - starting fresh', 'error', 3000);
         accounts = [];
         updateAccountsDisplay();
     }
@@ -327,10 +375,37 @@ function loadAccounts() {
 // Save accounts to localStorage
 function saveAccounts() {
     try {
-        localStorage.setItem('totpAccounts', JSON.stringify(accounts));
+        // Validate accounts data before saving
+        if (!Array.isArray(accounts)) {
+            throw new Error('Accounts data is not an array');
+        }
+        
+        // Validate each account before saving
+        const validAccounts = accounts.filter(account => {
+            return account && 
+                   typeof account === 'object' && 
+                   typeof account.name === 'string' && 
+                   typeof account.secret === 'string' &&
+                   account.name.length > 0 &&
+                   account.secret.length > 0;
+        });
+        
+        const dataToSave = JSON.stringify(validAccounts);
+        localStorage.setItem('totpAccounts', dataToSave);
+        
+        // Update the in-memory accounts if we filtered any
+        if (validAccounts.length !== accounts.length) {
+            accounts = validAccounts;
+                         logger.warn('Filtered out invalid accounts during save');
+        }
+        
         showToast('Changes saved', 'success', 2000);
     } catch (error) {
-        showToast('Failed to save changes', 'error', 3000);
+        if (error.name === 'QuotaExceededError') {
+            showToast('Storage quota exceeded - unable to save', 'error', 4000);
+        } else {
+            showToast('Failed to save changes', 'error', 3000);
+        }
         console.error('Save error:', error);
     }
 }
@@ -547,6 +622,7 @@ function importAccounts() {
     hideImportDialog();
 }
 
+// Filter accounts based on search term
 function filterAccounts() {
     const searchTerm = elements.searchInput.value.trim().toLowerCase();
     const accountElements = document.querySelectorAll('.code-display');
@@ -565,9 +641,30 @@ function filterAccounts() {
         if (name.includes(searchTerm)) {
             el.style.display = 'flex';
             
-            // Highlight matching text
-            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            nameEl.innerHTML = accounts[index].name.replace(regex, '<mark>$1</mark>');
+            // Safely highlight matching text without innerHTML
+            const originalName = accounts[index].name;
+            const lowerOriginal = originalName.toLowerCase();
+            const startIndex = lowerOriginal.indexOf(searchTerm);
+            
+            if (startIndex !== -1) {
+                // Clear existing content
+                nameEl.textContent = '';
+                
+                // Create text nodes for before, match, and after
+                if (startIndex > 0) {
+                    nameEl.appendChild(document.createTextNode(originalName.substring(0, startIndex)));
+                }
+                
+                const mark = document.createElement('mark');
+                mark.textContent = originalName.substring(startIndex, startIndex + searchTerm.length);
+                nameEl.appendChild(mark);
+                
+                if (startIndex + searchTerm.length < originalName.length) {
+                    nameEl.appendChild(document.createTextNode(originalName.substring(startIndex + searchTerm.length)));
+                }
+            } else {
+                nameEl.textContent = originalName;
+            }
         } else {
             el.style.display = 'none';
         }
@@ -582,7 +679,7 @@ function resetSearchFilter(accountElements = null) {
         // Remove any existing highlighting
         const nameEl = el.querySelector('.account-name');
         if (nameEl) {
-            nameEl.innerHTML = nameEl.textContent;
+            nameEl.textContent = nameEl.textContent;
         }
     });
 }
@@ -660,7 +757,10 @@ function createActionButton(type, accountName, handler) {
     
     const icon = type === 'edit' ? 'fas fa-pen' : 'fas fa-trash-alt';
     btn.innerHTML = `<i class="${icon}" aria-hidden="true"></i>`;
-    btn.setAttribute('aria-label', `${tooltipTexts[type]} ${accountName}`);
+    
+    // Sanitize account name for ARIA label to prevent potential issues
+    const sanitizedName = accountName.replace(/[<>"'&]/g, '');
+    btn.setAttribute('aria-label', `${tooltipTexts[type]} ${sanitizedName}`);
     btn.addEventListener('click', handler);
     
     const tooltip = document.createElement('span');
@@ -677,7 +777,10 @@ function createCodeWrapper(account, index) {
     codeWrapper.id = `code-wrapper-${index}`;
     codeWrapper.setAttribute('role', 'button');
     codeWrapper.setAttribute('tabindex', '0');
-    codeWrapper.setAttribute('aria-label', `Copy code for ${account.name}`);
+    
+    // Sanitize account name for ARIA label
+    const sanitizedName = account.name.replace(/[<>"'&]/g, '');
+    codeWrapper.setAttribute('aria-label', `Copy code for ${sanitizedName}`);
     
     const codeElement = document.createElement('div');
     codeElement.className = 'code loading';
@@ -715,7 +818,8 @@ function showDeleteDialog() {
         const accountName = accounts[deletingIndex].name;
         const description = dialog.querySelector('.dialog-description');
         if (description) {
-            description.innerHTML = `Are you sure you want to delete <strong>"${accountName}"</strong>?`;
+            // Safely set text content without innerHTML to prevent XSS
+            description.textContent = `Are you sure you want to delete "${accountName}"?`;
         }
     }
     
@@ -800,7 +904,7 @@ function confirmDeleteAccount() {
     // Reset dialog text back to default
     const description = elements.deleteDialog.querySelector('.dialog-description');
     if (description) {
-        description.innerHTML = 'Are you sure you want to delete this account?';
+        description.textContent = 'Are you sure you want to delete this account?';
     }
 }
 
@@ -838,7 +942,7 @@ function updateTimersDisplay() {
         
         // Check if we need to resync due to system suspension or major drift
         if (needsResync()) {
-            console.warn('Time drift detected, reinitializing timing system');
+            logger.warn('Time drift detected, reinitializing timing system');
             showToast('Time drift detected - resyncing...', 'warning', 2000);
             initializeTiming();
             return;
@@ -884,7 +988,7 @@ function updateTimersDisplay() {
                 }, 700);
                 
                 // Generate new codes when cycle resets
-                console.log('TOTP cycle completed, generating new codes');
+                logger.info('TOTP cycle completed, generating new codes');
                 updateAllCodes();
             } else {
                 // Normal countdown behavior
@@ -963,8 +1067,8 @@ function copyCode(index) {
 }
 
 function showCopySuccess(wrapper, index) {
-    // Get account name for accessibility announcement
-    const accountName = index < accounts.length ? accounts[index].name : '';
+    // Get account name for accessibility announcement with sanitization
+    const accountName = index < accounts.length ? accounts[index].name.replace(/[<>"'&]/g, '') : '';
     
     // Remove copied class first in case it's already there
     wrapper.classList.remove('copied');

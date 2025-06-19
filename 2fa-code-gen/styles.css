@@ -437,7 +437,7 @@ button:hover {
     gap: 0.75rem;
     max-width: 100%;
     margin: 0 auto;
-    transition: all 0.1s var(--transition-timing);
+    position: relative;
 }
 
 /* Timer styles with pill and circle states */
@@ -446,11 +446,9 @@ button:hover {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    flex: 1;
     height: 42px;
-    transition: flex 0.5s var(--transition-timing), 
-                width 0.5s var(--transition-timing),
-                min-width 0.5s var(--transition-timing);
+    transition: width 0.4s ease-out;
+    width: calc(100% - 42px - 0.75rem);
     min-width: 80px;
 }
 
@@ -468,9 +466,9 @@ button:hover {
     min-width: 80px;
     height: 42px;
     border: 1px solid var(--border-color);
-    transition: opacity 0.5s var(--transition-timing),
-                visibility 0.5s var(--transition-timing),
-                transform 0.5s var(--transition-timing);
+    transition: opacity 0.4s ease-out,
+                visibility 0.4s ease-out,
+                transform 0.4s ease-out;
     transform-origin: left center;
 }
 
@@ -568,8 +566,8 @@ button:hover {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    min-width: 42px;
-    transition: flex 0.5s var(--transition-timing);
+    width: 42px;
+    transition: width 0.4s ease-out 0.05s;
 }
 
 .search-toggle {
@@ -620,9 +618,9 @@ button:hover {
 .search-input-container {
     width: 0;
     overflow: hidden;
-    transition: width 0.5s var(--transition-timing),
-                opacity 0.5s var(--transition-timing),
-                margin-right 0.5s var(--transition-timing);
+    transition: width 0.3s ease-out,
+                opacity 0.2s ease-out,
+                margin-right 0.3s ease-out;
     opacity: 0;
     margin-right: 42px; /* only reserve space for the icon */
     transform-origin: right center;
@@ -674,13 +672,12 @@ button:hover {
 
 /* Allow the whole search area to grow when search is active */
 .timer-search-container.search-active .search-area {
-    flex: 1;
+    width: calc(100% - 42px - 0.75rem);
 }
 
 .timer-search-container.search-active .timer-wrapper {
-    min-width: 42px;
     width: 42px;
-    flex: 0 0 42px;
+    min-width: 42px;
 }
 
 .action-buttons-container {
