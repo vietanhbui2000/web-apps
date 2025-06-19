@@ -8,7 +8,16 @@ let editingIndex = -1;
 let activeButton = null; // Track currently active button
 let deletingIndex = -1;
 let isSearchActive = false; // Track search state
+
+// Timing state - sync once at startup, then use internal timing
+let startupTime = 0; // Unix timestamp when app started
+let startupTimeLeft = 0; // Time left in TOTP period when app started
+let internalTimer = null; // Main timer interval
 let lastTimeLeft = -1; // Track previous time left for reset detection
+
+// Page visibility state management
+let isPageVisible = true;
+let wasHiddenTime = 0; // When the page was hidden
 
 // DOM element cache
 const elements = {};
@@ -17,7 +26,7 @@ const elements = {};
 const tooltipTexts = {
     edit: "Edit",
     delete: "Delete",
-    copy: "Double click to copy"
+    copy: "Click to copy"
 };
 
 // Add deleted accounts array for undo functionality
@@ -71,12 +80,157 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load accounts from local storage
     loadAccounts();
 
-    // Set up timer update interval with higher frequency for smoother animation
-    setInterval(updateTimers, 100);
+    // Initialize timing system - sync once at startup
+    initializeTiming();
+
+    // Setup page visibility handling for hibernation/wake
+    setupPageVisibilityHandling();
 
     // Attach event listeners
     setupEventListeners();
 });
+
+// Initialize timing system - sync once at startup, then use internal timing
+function initializeTiming() {
+    try {
+        // Get current time and calculate position in TOTP cycle
+        const now = Math.floor(Date.now() / 1000);
+        startupTime = now;
+        startupTimeLeft = TOTP_INTERVAL - (now % TOTP_INTERVAL);
+        
+        console.log(`Timing initialized - Current time: ${now}, Time left in cycle: ${startupTimeLeft}s`);
+        
+        // Update display immediately
+        updateTimersDisplay();
+        
+        // Generate initial codes
+        updateAllCodes();
+        
+        // Start internal timer only if page is visible
+        startTimerIfVisible();
+        
+    } catch (error) {
+        console.error('Failed to initialize timing system:', error);
+        showToast('Error: Failed to initialize timing. Please refresh the page.', 'error', 5000);
+    }
+}
+
+// Start timer only if page is currently visible
+function startTimerIfVisible() {
+    // Clear any existing timer
+    if (internalTimer) {
+        clearInterval(internalTimer);
+        internalTimer = null;
+    }
+    
+    // Only start timer if page is visible
+    if (isPageVisible) {
+        internalTimer = setInterval(updateTimersDisplay, 100);
+        console.log('Timer started - page is visible');
+    } else {
+        console.log('Timer not started - page is hidden');
+    }
+}
+
+// Pause the app when page becomes hidden
+function pauseApp() {
+    console.log('App pausing - page hidden');
+    
+    // Stop the timer
+    if (internalTimer) {
+        clearInterval(internalTimer);
+        internalTimer = null;
+    }
+    
+    // Record when we went hidden
+    wasHiddenTime = Date.now();
+    isPageVisible = false;
+}
+
+// Resume the app when page becomes visible
+function resumeApp() {
+    console.log('App resuming - page visible');
+    
+    isPageVisible = true;
+    
+    // Calculate how long we were hidden
+    const hiddenDuration = wasHiddenTime ? (Date.now() - wasHiddenTime) / 1000 : 0;
+    console.log(`Was hidden for ${hiddenDuration.toFixed(1)} seconds`);
+    
+    // If we were hidden for more than 1 second, resync timing
+    // This handles cases where system was suspended or significant time passed
+    if (hiddenDuration > 1) {
+        console.log('Resyncing timing after being hidden');
+        showToast('Resyncing time...', 'info', 1500);
+        initializeTiming();
+    } else {
+        // Just restart the timer if it was a brief hide
+        startTimerIfVisible();
+    }
+    
+    wasHiddenTime = 0;
+}
+
+// Setup Page Visibility API handling
+function setupPageVisibilityHandling() {
+    // Check if Page Visibility API is supported
+    if (typeof document.visibilityState === 'undefined') {
+        console.warn('Page Visibility API not supported - hibernation disabled');
+        return;
+    }
+    
+    // Set initial visibility state
+    isPageVisible = !document.hidden;
+    console.log(`Initial page visibility: ${isPageVisible ? 'visible' : 'hidden'}`);
+    
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // Page became hidden (tab switched, window minimized, etc.)
+            pauseApp();
+        } else {
+            // Page became visible again
+            resumeApp();
+        }
+    });
+    
+    // Also handle window focus/blur as fallback for older browsers
+    window.addEventListener('blur', () => {
+        if (isPageVisible) {
+            console.log('Window lost focus');
+            // Don't pause on blur alone, but log it
+        }
+    });
+    
+    window.addEventListener('focus', () => {
+        if (!isPageVisible) {
+            console.log('Window gained focus while page was hidden');
+            // This will trigger when user comes back to a hidden tab
+        }
+    });
+    
+    console.log('Page visibility handling initialized');
+}
+
+// Calculate current time left based on startup time and internal counting
+function getCurrentTimeLeft() {
+    const elapsedSinceStartup = Math.floor((Date.now() - (startupTime * 1000)) / 1000);
+    const totalElapsed = elapsedSinceStartup;
+    const currentTimeLeft = (startupTimeLeft - totalElapsed) % TOTP_INTERVAL;
+    
+    // Handle negative values (cycle completed)
+    return currentTimeLeft <= 0 ? TOTP_INTERVAL + currentTimeLeft : currentTimeLeft;
+}
+
+// Check if we need to resync (detect system suspension/major time changes)
+function needsResync() {
+    const expectedTime = startupTime + Math.floor((Date.now() - (startupTime * 1000)) / 1000);
+    const actualTime = Math.floor(Date.now() / 1000);
+    const drift = Math.abs(actualTime - expectedTime);
+    
+    // If drift is more than 5 seconds, we probably need to resync
+    return drift > 5;
+}
 
 // Base32 decode function
 function base32ToHex(base32) {
@@ -113,11 +267,11 @@ function generateTOTP(secret) {
         // Check if CryptoJS is available
         if (typeof CryptoJS === 'undefined') {
             console.error('CryptoJS library not loaded');
-            showToast('Error: Cryptography library failed to load', 'error', 3000);
+            showToast('Error: Cryptography library failed to load. Please refresh the page.', 'error', 5000);
             return '------';
         }
         
-        // Get current time period
+        // Get current time period (use actual current time for TOTP calculation)
         const epoch = Math.floor(Date.now() / 1000);
         const time = Math.floor(epoch / TOTP_INTERVAL);
         
@@ -126,7 +280,10 @@ function generateTOTP(secret) {
         
         // Convert secret from base32 to hex
         const secretHex = base32ToHex(secret);
-        if (!secretHex) return '------'; // Handle empty secret
+        if (!secretHex) {
+            console.warn('Invalid or empty secret key for TOTP generation');
+            return '------';
+        }
         
         // Calculate HMAC
         const hmac = CryptoJS.HmacSHA1(
@@ -147,6 +304,7 @@ function generateTOTP(secret) {
         return (code % 1000000).toString().padStart(6, '0');
     } catch (error) {
         console.error('Error generating TOTP:', error);
+        showToast('Code generation failed. Please refresh the page.', 'error', 3000);
         return '------';
     }
 }
@@ -487,7 +645,7 @@ function createActionsContainer(account, index) {
     actionsContainer.className = 'account-actions';
     
     // Edit button
-    const editBtn = createActionButton('edit', account.name, () => editAccount(index));
+    const editBtn = createActionButton('edit', account.name, (e) => handleEditClick(e, index));
     const deleteBtn = createActionButton('delete', account.name, (e) => handleDeleteClick(e, index));
     
     actionsContainer.appendChild(editBtn);
@@ -532,7 +690,7 @@ function createCodeWrapper(account, index) {
     copyIndicator.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i>';
     copyIndicator.setAttribute('aria-hidden', 'true');
     
-    // Tooltip for double-click to copy
+    // Tooltip for click to copy
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
     tooltip.textContent = tooltipTexts.copy;
@@ -550,10 +708,20 @@ function createCodeWrapper(account, index) {
 }
 
 function showDeleteDialog() {
-    // Close any other open dialogs first
-    closeAllDialogs();
-    
     const dialog = elements.deleteDialog;
+    
+    // Update dialog content with account name
+    if (deletingIndex >= 0 && deletingIndex < accounts.length) {
+        const accountName = accounts[deletingIndex].name;
+        const description = dialog.querySelector('.dialog-description');
+        if (description) {
+            description.innerHTML = `Are you sure you want to delete <strong>"${accountName}"</strong>?`;
+        }
+    }
+    
+    // Close any other open dialogs first (but preserve our active button)
+    closeAllDialogs(true);
+    
     dialog.classList.add('visible');
     
     // Set focus to the confirm button for keyboard accessibility
@@ -566,11 +734,46 @@ function showDeleteDialog() {
 function hideDeleteDialog() {
     elements.deleteDialog.classList.remove('visible');
     deletingIndex = -1;
+    
+    // Reset the active delete button
+    if (activeButton && activeButton.classList.contains('delete')) {
+        activeButton.classList.remove('active');
+        activeButton = null;
+    }
+}
+
+function handleEditClick(event, index) {
+    event.stopPropagation(); // Prevent event bubbling
+    
+    // Reset any previously active button first
+    resetActionButtons();
+    
+    // Keep the edit button visually active
+    const editButton = event.currentTarget;
+    if (editButton) {
+        editButton.classList.add('active');
+        // Store reference to the active button
+        activeButton = editButton;
+    }
+    
+    editAccount(index);
 }
 
 function handleDeleteClick(event, index) {
     event.stopPropagation(); // Prevent event bubbling
     deletingIndex = index;
+    
+    // Reset any previously active button first
+    resetActionButtons();
+    
+    // Keep the delete button visually active
+    const deleteButton = event.currentTarget;
+    if (deleteButton) {
+        deleteButton.classList.add('active');
+        // Store reference to the active button
+        activeButton = deleteButton;
+    }
+    
     showDeleteDialog();
 }
 
@@ -593,23 +796,27 @@ function confirmDeleteAccount() {
     // Hide dialog and show toast with undo option
     hideDeleteDialog();
     showUndoToast('Account deleted', undoDelete);
+    
+    // Reset dialog text back to default
+    const description = elements.deleteDialog.querySelector('.dialog-description');
+    if (description) {
+        description.innerHTML = 'Are you sure you want to delete this account?';
+    }
 }
 
 function resetActionButtons(preserveActiveButton = false) {
-    if (!preserveActiveButton) {
+    if (!preserveActiveButton && activeButton) {
         // Reset any active buttons
-        if (activeButton) {
-            if (activeButton.classList.contains('delete')) {
-                resetDeleteButton(activeButton);
-            } else if (activeButton.classList.contains('edit')) {
-                activeButton.classList.remove('active');
-                const codeDisplay = activeButton.closest('.code-display');
-                if (codeDisplay) {
-                    codeDisplay.classList.remove('active-edit');
-                }
+        if (activeButton.classList.contains('delete')) {
+            activeButton.classList.remove('active');
+        } else if (activeButton.classList.contains('edit')) {
+            activeButton.classList.remove('active');
+            const codeDisplay = activeButton.closest('.code-display');
+            if (codeDisplay) {
+                codeDisplay.classList.remove('active-edit');
             }
-            activeButton = null;
         }
+        activeButton = null;
     }
 }
 
@@ -621,68 +828,76 @@ function resetDeleteButton(button) {
     }
 }
 
-function updateTimers() {
-    const currentTime = Math.floor(Date.now() / 1000);
-    const timeLeft = TOTP_INTERVAL - (currentTime % TOTP_INTERVAL);
-    const progress = timeLeft / TOTP_INTERVAL;  // Progress now represents remaining time as a ratio
-    
-    // Calculate more precise progress with milliseconds for smoother animation
-    const millisecondTime = Date.now() / 1000; // Get time with millisecond precision
-    const preciseTimeLeft = TOTP_INTERVAL - (millisecondTime % TOTP_INTERVAL);
-    const preciseProgress = preciseTimeLeft / TOTP_INTERVAL;
-
-    // Update global timer display
-    if (elements.countdownTimer) {
-        elements.countdownTimer.textContent = timeLeft;
-    }
-    
-    // Update minimized timer
-    if (elements.miniCountdownTimer) {
-        elements.miniCountdownTimer.textContent = timeLeft;
-    }
-
-    // Update ARIA values for accessibility
-    if (elements.progressBar) {
-        elements.progressBar.style.setProperty('--progress', preciseProgress);
-        elements.progressBar.setAttribute('aria-valuenow', timeLeft);
-    }
-    
-    // Update circle timer progress using the same progress value
-    if (elements.circleProgress) {
-        // Update ARIA values
-        elements.circleProgress.setAttribute('aria-valuenow', timeLeft);
-        
-        // Detect timer reset (when timeLeft jumps from a low value back to TOTP_INTERVAL)
-        if (lastTimeLeft === 0 && timeLeft === TOTP_INTERVAL) {
-            // Apply reset class for smoother transition
-            elements.circleProgress.classList.add('resetting');
-            
-            // Set to maximum value immediately
-            elements.circleProgress.style.setProperty('--progress', 1);
-            
-            // Remove the class after animation completes
-            setTimeout(() => {
-                elements.circleProgress.classList.remove('resetting');
-            }, 700);
-        } else {
-            // Normal countdown behavior
-            elements.circleProgress.style.setProperty('--progress', preciseProgress);
+// Update timer display using internal timing (called every 100ms)
+function updateTimersDisplay() {
+    try {
+        // Don't update if page is hidden (shouldn't happen since timer is paused, but safety check)
+        if (!isPageVisible) {
+            return;
         }
-    }
-    
-    // Store current timeLeft for next comparison
-    lastTimeLeft = timeLeft;
+        
+        // Check if we need to resync due to system suspension or major drift
+        if (needsResync()) {
+            console.warn('Time drift detected, reinitializing timing system');
+            showToast('Time drift detected - resyncing...', 'warning', 2000);
+            initializeTiming();
+            return;
+        }
+        
+        // Use internal calculation for current time left
+        const timeLeft = Math.floor(getCurrentTimeLeft());
+        const preciseTimeLeft = getCurrentTimeLeft(); // With decimals for smooth animation
+        const preciseProgress = preciseTimeLeft / TOTP_INTERVAL;
 
-    // If time is up (0 seconds left), update all codes
-    if (timeLeft === 0) {
-        updateAllCodes();
-    }
-    // Or if we're in the last 3 seconds, prepare for update
-    else if (timeLeft <= 3) {
-        // Schedule the update for exactly when the time hits 0
-        setTimeout(() => {
-            updateAllCodes();
-        }, timeLeft * 1000);
+        // Update global timer display
+        if (elements.countdownTimer) {
+            elements.countdownTimer.textContent = timeLeft;
+        }
+        
+        // Update minimized timer
+        if (elements.miniCountdownTimer) {
+            elements.miniCountdownTimer.textContent = timeLeft;
+        }
+
+        // Update ARIA values for accessibility
+        if (elements.progressBar) {
+            elements.progressBar.style.setProperty('--progress', preciseProgress);
+            elements.progressBar.setAttribute('aria-valuenow', timeLeft);
+        }
+        
+        // Update circle timer progress using the same progress value
+        if (elements.circleProgress) {
+            // Update ARIA values
+            elements.circleProgress.setAttribute('aria-valuenow', timeLeft);
+            
+            // Detect timer reset (when timeLeft jumps from a low value back to TOTP_INTERVAL)
+            if (lastTimeLeft <= 1 && timeLeft >= TOTP_INTERVAL - 1) {
+                // Apply reset class for smoother transition
+                elements.circleProgress.classList.add('resetting');
+                
+                // Set to maximum value immediately
+                elements.circleProgress.style.setProperty('--progress', 1);
+                
+                // Remove the class after animation completes
+                setTimeout(() => {
+                    elements.circleProgress.classList.remove('resetting');
+                }, 700);
+                
+                // Generate new codes when cycle resets
+                console.log('TOTP cycle completed, generating new codes');
+                updateAllCodes();
+            } else {
+                // Normal countdown behavior
+                elements.circleProgress.style.setProperty('--progress', preciseProgress);
+            }
+        }
+        
+        // Store current timeLeft for next comparison
+        lastTimeLeft = timeLeft;
+
+    } catch (error) {
+        console.error('Error updating timer display:', error);
+        showToast('Timer error occurred. Please refresh the page.', 'error', 3000);
     }
 }
 
@@ -836,17 +1051,49 @@ function updateAllCodes() {
 }
 
 // Dialog Functions
+function toggleImportDialog() {
+    const dialog = elements.importDialog;
+    
+    if (dialog.classList.contains('visible')) {
+        hideImportDialog();
+    } else {
+        showImportDialog();
+    }
+}
+
 function showImportDialog() {
     // Close any other open dialogs first
     closeAllDialogs();
     
     elements.importDialog.classList.add('visible');
     elements.importText.focus();
+    
+    // Add active state to button
+    const importBtn = document.getElementById('importButton');
+    if (importBtn) {
+        importBtn.classList.add('active');
+    }
 }
 
 function hideImportDialog() {
     elements.importDialog.classList.remove('visible');
     elements.importText.value = '';
+    
+    // Remove active state from button
+    const importBtn = document.getElementById('importButton');
+    if (importBtn) {
+        importBtn.classList.remove('active');
+    }
+}
+
+function toggleExportDialog() {
+    const dialog = elements.exportDialog;
+    
+    if (dialog.classList.contains('visible')) {
+        hideExportDialog();
+    } else {
+        showExportDialog();
+    }
 }
 
 function showExportDialog() {
@@ -858,43 +1105,78 @@ function showExportDialog() {
     
     elements.exportDialog.classList.add('visible');
     elements.exportText.select();
+    
+    // Add active state to button
+    const exportBtn = document.getElementById('exportButton');
+    if (exportBtn) {
+        exportBtn.classList.add('active');
+    }
 }
 
 function hideExportDialog() {
     elements.exportDialog.classList.remove('visible');
     elements.exportText.value = '';
+    
+    // Remove active state from button
+    const exportBtn = document.getElementById('exportButton');
+    if (exportBtn) {
+        exportBtn.classList.remove('active');
+    }
 }
 
 function showEditDialog() {
-    // Close any other open dialogs first
-    closeAllDialogs();
+    // Close any other open dialogs first (but preserve our active button)
+    closeAllDialogs(true);
     
     elements.editDialog.classList.add('visible');
-    elements.editAccountName.focus();
+    
+    // Delay focus to prevent interfering with button states
+    setTimeout(() => {
+        elements.editAccountName.focus();
+    }, 100);
 }
 
 function hideEditDialog() {
     elements.editDialog.classList.remove('visible');
     editingIndex = -1;
+    
+    // Reset the active edit button
+    if (activeButton && activeButton.classList.contains('edit')) {
+        activeButton.classList.remove('active');
+        activeButton = null;
+    }
 }
 
 function hideConfirmDialog() {
     elements.confirmDialog.classList.remove('visible');
 }
 
-function closeAllDialogs() {
+function closeAllDialogs(preserveActiveActionButton = false) {
     // Hide all dialogs
     const dialogs = document.querySelectorAll('.dialog-form');
     dialogs.forEach(dialog => {
         dialog.classList.remove('visible');
     });
     
-    // Reset all states
-    editingIndex = -1;
-    deletingIndex = -1;
+    // Reset all states (but preserve our editing/deleting state if needed)
+    if (!preserveActiveActionButton) {
+        editingIndex = -1;
+        deletingIndex = -1;
+    }
     
-    // Reset all buttons
-    resetActionButtons();
+    // Reset all buttons (but preserve active action button if needed)
+    resetActionButtons(preserveActiveActionButton);
+    
+    // Reset dialog button states
+    const importBtn = document.getElementById('importButton');
+    const exportBtn = document.getElementById('exportButton');
+    
+    if (importBtn) {
+        importBtn.classList.remove('active');
+    }
+    if (exportBtn) {
+        exportBtn.classList.remove('active');
+    }
     
     // Hide add account form
     hideAddAccountForm();
@@ -1117,12 +1399,12 @@ function setupEventListeners() {
     document.getElementById('cancelEditAccountBtn').addEventListener('click', hideEditDialog);
     
     // Import buttons
-    document.getElementById('importButton').addEventListener('click', showImportDialog);
+    document.getElementById('importButton').addEventListener('click', toggleImportDialog);
     document.getElementById('importAccountsBtn').addEventListener('click', importAccounts);
     document.getElementById('cancelImportBtn').addEventListener('click', hideImportDialog);
     
     // Export buttons
-    document.getElementById('exportButton').addEventListener('click', showExportDialog);
+    document.getElementById('exportButton').addEventListener('click', toggleExportDialog);
     document.getElementById('copyExportBtn').addEventListener('click', copyExportText);
     document.getElementById('closeExportBtn').addEventListener('click', hideExportDialog);
     

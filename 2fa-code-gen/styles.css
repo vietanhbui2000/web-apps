@@ -126,14 +126,14 @@ button:hover {
     mask-image: linear-gradient(
         to bottom,
         transparent 0%,
-        black 0.5rem,
+        black 1rem,
         black calc(100% - 1rem),
         transparent 100%
     );
     -webkit-mask-image: linear-gradient(
         to bottom,
         transparent 0%,
-        black 0.5rem,
+        black 1rem,
         black calc(100% - 1rem),
         transparent 100%
     );
@@ -250,8 +250,31 @@ button:hover {
 }
 
 .account-name-container:hover .account-actions,
-.account-name-container .account-actions:has(.edit.active) {
+.account-name-container .account-actions:has(.edit.active),
+.account-name-container .account-actions:has(.delete.active) {
     opacity: 1;
+}
+
+/* Keep the active button visible */
+.account-actions .account-action-btn.edit.active,
+.account-actions .account-action-btn.delete.active {
+    opacity: 1 !important;
+}
+
+/* Hide non-active buttons when one is active, unless hovering - DESKTOP ONLY */
+@media (min-width: 769px) {
+    .account-actions:has(.edit.active) .account-action-btn.delete:not(.active) {
+        opacity: 0;
+    }
+
+    .account-actions:has(.delete.active) .account-action-btn.edit:not(.active) {
+        opacity: 0;
+    }
+
+    /* Show all buttons on hover */
+    .account-name-container:hover .account-actions .account-action-btn {
+        opacity: 1 !important;
+    }
 }
 
 .account-action-btn {
@@ -414,6 +437,7 @@ button:hover {
     gap: 0.75rem;
     max-width: 100%;
     margin: 0 auto;
+    transition: all 0.1s var(--transition-timing);
 }
 
 /* Timer styles with pill and circle states */
@@ -424,7 +448,9 @@ button:hover {
     justify-content: flex-start;
     flex: 1;
     height: 42px;
-    transition: all 0.5s var(--transition-timing);
+    transition: flex 0.5s var(--transition-timing), 
+                width 0.5s var(--transition-timing),
+                min-width 0.5s var(--transition-timing);
     min-width: 80px;
 }
 
@@ -442,7 +468,9 @@ button:hover {
     min-width: 80px;
     height: 42px;
     border: 1px solid var(--border-color);
-    transition: all 0.5s var(--transition-timing);
+    transition: opacity 0.5s var(--transition-timing),
+                visibility 0.5s var(--transition-timing),
+                transform 0.5s var(--transition-timing);
     transform-origin: left center;
 }
 
@@ -489,7 +517,9 @@ button:hover {
     font-size: 0.85rem;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.5s var(--transition-timing);
+    transition: opacity 0.5s var(--transition-timing),
+                visibility 0.5s var(--transition-timing),
+                transform 0.5s var(--transition-timing);
     border: 1px solid var(--border-color);
     box-sizing: border-box;
     aspect-ratio: 1/1;
@@ -498,6 +528,7 @@ button:hover {
     z-index: 5;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transform: scale(0.8);
+    transform-origin: left center;
 }
 
 .timer-circle-progress {
@@ -538,6 +569,7 @@ button:hover {
     align-items: center;
     justify-content: flex-end;
     min-width: 42px;
+    transition: flex 0.5s var(--transition-timing);
 }
 
 .search-toggle {
@@ -554,7 +586,9 @@ button:hover {
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.5s var(--transition-timing);
+    transition: background-color 0.3s var(--transition-timing),
+                box-shadow 0.3s var(--transition-timing),
+                transform 0.3s var(--transition-timing);
     flex-shrink: 0;
     z-index: 2;
     aspect-ratio: 1/1;
@@ -586,9 +620,12 @@ button:hover {
 .search-input-container {
     width: 0;
     overflow: hidden;
-    transition: all 0.5s var(--transition-timing);
+    transition: width 0.5s var(--transition-timing),
+                opacity 0.5s var(--transition-timing),
+                margin-right 0.5s var(--transition-timing);
     opacity: 0;
-    margin-right: 42px;
+    margin-right: 42px; /* only reserve space for the icon */
+    transform-origin: right center;
 }
 
 .search-input-container input {
@@ -629,9 +666,15 @@ button:hover {
 }
 
 .timer-search-container.search-active .search-input-container {
-    width: 300px;
+    /* Take full width of the search-area, leaving icon width (42px) + gap (0.75rem) */
+    width: calc(100% - (42px + 0.75rem));
     opacity: 1;
-    margin-right: 52px;
+    margin-right: calc(0.75rem + 42px); /* keep gap between input and icon */
+}
+
+/* Allow the whole search area to grow when search is active */
+.timer-search-container.search-active .search-area {
+    flex: 1;
 }
 
 .timer-search-container.search-active .timer-wrapper {
@@ -645,12 +688,12 @@ button:hover {
     align-items: center;
     gap: 0.75rem;
     text-align: center;
-    padding: 1.5rem 2rem;
+    padding: 1.25rem 2rem;
     color: var(--text-secondary);
     font-size: 0.75rem;
     border-top: 1px solid var(--border-color);
     background: var(--bg-secondary);
-    margin: 0 -2rem -2rem -2rem;
+    margin: -1.5rem -2rem -2rem -2rem;
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     margin-top: auto;
     position: relative;
@@ -719,6 +762,14 @@ button:hover {
     color: var(--primary-color);
     background-color: rgba(0, 123, 255, 0.1);
     transform: translateY(-2px);
+}
+
+.icon-button.active {
+    color: var(--primary-color);
+    background-color: rgba(0, 123, 255, 0.15);
+    border-color: var(--primary-color);
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15) inset;
 }
 
 .import-export-buttons {
@@ -1017,16 +1068,28 @@ textarea:focus-visible,
     }
 
     .action-buttons-container {
-        margin: 0 -1rem -1rem -1rem;
-        padding: 1.5rem 1rem;
-        position: relative;
-        z-index: 10;
+        margin: -1rem -1rem -1rem -1rem;
     }
 
     .codes-container {
         margin: 0 -1rem;
         padding: 0.5rem 1rem 1.25rem;
         gap: 1.25rem;
+        padding-bottom: 2rem;
+        mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 2rem,
+            black calc(100% - 2rem),
+            transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 2rem,
+            black calc(100% - 2rem),
+            transparent 100%
+        );
     }
 
     .codes-container-inner {
@@ -1062,8 +1125,11 @@ textarea:focus-visible,
 
     .app-header {
         margin: -1rem -1rem 1rem -1rem;
-        padding: 1.5rem 1rem;
+        padding: 1.25rem 1rem;
         border-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .app-header h1 {
@@ -1077,20 +1143,33 @@ textarea:focus-visible,
     }
 
     .action-buttons-container {
-        position: sticky;
-        bottom: 0;
-        margin: 0 -1rem -1rem -1rem;
-        padding: 1.5rem 1rem;
+        margin: -1rem -1rem -1rem -1rem;
+        padding: 1rem 1rem;
         border-radius: 0;
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
+        align-items: center;
         z-index: 10;
     }
 
     .codes-container {
         margin: 0 -1rem;
-        padding: 0.5rem 1rem 1rem;
+        padding: 0.5rem 1rem 2rem;
         gap: 1rem;
+        mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 2rem,
+            black calc(100% - 2rem),
+            transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 2rem,
+            black calc(100% - 2rem),
+            transparent 100%
+        );
     }
     
     .dialog-form {
@@ -1111,8 +1190,12 @@ textarea:focus-visible,
         height: 120px;
     }
 
+    /* Ensure consistent gaps on mobile: 0.75rem gap between timer → input → icon */
     .timer-search-container.search-active .search-input-container {
-        width: calc(100vw - 150px);
+        /* Take full width of the search-area, leaving icon width (42px) + gap (0.75rem) */
+        width: calc(100% - (42px + 0.75rem));
+        opacity: 1;
+        margin-right: calc(0.75rem + 42px);
     }
 
     @supports (-webkit-touch-callout: none) {
@@ -1276,6 +1359,9 @@ textarea:focus {
     border-radius: var(--border-radius) var(--border-radius) 0 0;
     border-bottom: 1px solid var(--border-color);
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .app-header h1 {
@@ -1292,4 +1378,43 @@ textarea:focus {
 
 #deleteDialog button:not(.secondary):hover {
     background-color: var(--danger-hover);
+}
+
+/* -------------------------------------------------- */
+/* Mobile override block (must come AFTER base styles) */
+/* -------------------------------------------------- */
+
+@media (max-width: 480px) {
+    /* Center header and fix spacing */
+    .app-header {
+        margin: -1rem -1rem 1rem -1rem;
+        padding: 1.25rem 1rem;
+        border-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Ensure action buttons bar height feels balanced */
+    .action-buttons-container {
+        padding: 1.25rem 1rem;
+        align-items: center;
+    }
+
+    /* Extra space so last account isn't flush against the action bar */
+    .codes-container {
+        padding-bottom: 2rem;
+    }
+}
+
+/* Ensure toast container does not affect flex layout */
+#toastContainer {
+    position: fixed;            /* Remove from normal flow */
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 120px;              /* Keep in sync with .toast default offset */
+    width: 0;                  /* No width so it doesn't create a gap */
+    height: 0;                 /* No height */
+    pointer-events: none;      /* Ignore pointer events */
+    display: block;            /* Default display so JS can append to it if needed */
 } 
