@@ -1,8 +1,7 @@
 .DS_Store
-~private
-~testing
+--
+AGENTS.md
 package.json
 .prettierrc
 .prettierignore
 eslint.config.mjs
-AGENTS.md
